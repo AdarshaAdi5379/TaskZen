@@ -16,6 +16,7 @@ import { HistoryView } from './history-view';
 import { ProjectSelector } from './project-selector';
 import { CalendarSync } from 'lucide-react';
 import { syncToCalendar } from '@/ai/flows/calendar-sync-flow';
+import { QuickAddWidget } from './quick-add-widget';
 
 async function migrateUserTasks(userId: string, defaultProjectId: string) {
     const oldTodosRef = collection(db, 'users', userId, 'todos');
@@ -51,7 +52,7 @@ export function TodoApp() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
-  const [filter, setFilter] = useState<Filter>('all');
+  const [filter, setFilter]_useState<Filter>('all');
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -275,58 +276,61 @@ export function TodoApp() {
   const currentProject = useMemo(() => projects.find(p => p.id === currentProjectId), [projects, currentProjectId]);
 
   return (
-    <Card className="w-full max-w-lg shadow-2xl backdrop-blur-sm bg-card/80 dark:bg-card/60 border-2">
-      <CardHeader className="text-center">
-        <div className="flex justify-center items-center gap-3 mb-2">
-            <TaskZenIcon className="h-8 w-8 text-primary" />
-            <CardTitle className="text-4xl font-bold tracking-tight">TaskZen</CardTitle>
-        </div>
-      </CardHeader>
-      <CardContent>
-         <div className="px-2 space-y-4">
-          <ProjectSelector 
-            projects={projects}
-            currentProject={currentProject}
-            onSelectProject={setCurrentProjectId}
-            onCreateProject={createProject}
-            onShareProject={shareProject}
-          />
-          {filter !== 'history' &&
-              <TodoForm onAddTodo={addTodo} />
-          }
-        </div>
-        
-        <div className="mt-4 min-h-[24rem]">
-          { filter === 'history' ? (
-            <HistoryView completedTodos={filteredTodos.filter(t => t.completed)} />
-          ) : (
-            <TodoList 
-              todos={filteredTodos} 
-              onToggleTodo={toggleTodo} 
-              onDeleteTodo={deleteTodo} 
-              onAssignTask={assignTask}
-              members={currentProject?.membersInfo || []}
-              loading={loading}
+    <>
+      <Card className="w-full max-w-lg shadow-2xl backdrop-blur-sm bg-card/80 dark:bg-card/60 border-2 z-10">
+        <CardHeader className="text-center">
+          <div className="flex justify-center items-center gap-3 mb-2">
+              <TaskZenIcon className="h-8 w-8 text-primary" />
+              <CardTitle className="text-4xl font-bold tracking-tight">TaskZen</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+           <div className="px-2 space-y-4">
+            <ProjectSelector 
+              projects={projects}
+              currentProject={currentProject}
+              onSelectProject={setCurrentProjectId}
+              onCreateProject={createProject}
+              onShareProject={shareProject}
             />
-          )}
-        </div>
-      </CardContent>
-      {todos.length > 0 && (
-          <CardFooter className="flex-col sm:flex-row gap-4 justify-between items-center text-sm text-muted-foreground border-t pt-4">
-              <div className="flex items-center gap-2">
-                <span>{pendingCount} tasks left</span>
-              </div>
-              <div className="flex-grow flex justify-center">
-                  <TodoFilters filter={filter} onSetFilter={setFilter} />
-              </div>
-               <Button variant="outline" size="sm" onClick={handleSyncToCalendar} disabled={isSyncing}>
-                  <CalendarSync className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                  <span className="ml-2 hidden sm:inline">
-                    {isSyncing ? "Syncing..." : "Sync to Calendar"}
-                  </span>
-              </Button>
-          </CardFooter>
-      )}
-    </Card>
+            {filter !== 'history' &&
+                <TodoForm onAddTodo={addTodo} />
+            }
+          </div>
+          
+          <div className="mt-4 min-h-[24rem]">
+            { filter === 'history' ? (
+              <HistoryView completedTodos={filteredTodos.filter(t => t.completed)} />
+            ) : (
+              <TodoList 
+                todos={filteredTodos} 
+                onToggleTodo={toggleTodo} 
+                onDeleteTodo={deleteTodo} 
+                onAssignTask={assignTask}
+                members={currentProject?.membersInfo || []}
+                loading={loading}
+              />
+            )}
+          </div>
+        </CardContent>
+        {todos.length > 0 && (
+            <CardFooter className="flex-col sm:flex-row gap-4 justify-between items-center text-sm text-muted-foreground border-t pt-4">
+                <div className="flex items-center gap-2">
+                  <span>{pendingCount} tasks left</span>
+                </div>
+                <div className="flex-grow flex justify-center">
+                    <TodoFilters filter={filter} onSetFilter={setFilter} />
+                </div>
+                 <Button variant="outline" size="sm" onClick={handleSyncToCalendar} disabled={isSyncing}>
+                    <CalendarSync className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                    <span className="ml-2 hidden sm:inline">
+                      {isSyncing ? "Syncing..." : "Sync to Calendar"}
+                    </span>
+                </Button>
+            </CardFooter>
+        )}
+      </Card>
+      <QuickAddWidget onAddTodo={addTodo} currentProjectId={currentProjectId} />
+    </>
   );
 }

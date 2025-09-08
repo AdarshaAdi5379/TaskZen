@@ -8,8 +8,8 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit/zod';
-import { getGoogleAccessToken } from '@genkit-ai/next/auth';
+import { z } from 'zod';
+import { getGoogleAccessToken } from '@genkit-ai/googleai';
 import { google } from 'googleapis';
 import type { Todo } from '@/components/todo/types';
 

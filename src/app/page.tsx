@@ -11,21 +11,23 @@ export default function Home() {
   const { user, loading } = useAuth();
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-start sm:justify-center p-4 sm:p-6">
-      <div className="absolute top-4 right-4 flex items-center gap-2">
-        <ThemeToggle />
-        {user && <UserMenu />}
-      </div>
-      
-      {loading ? (
-        <div className="flex items-center justify-center min-h-[300px]">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+    <>
+      <div className="relative flex min-h-screen flex-col items-center justify-start sm:justify-center p-4 sm:p-6">
+        <div className="absolute top-4 right-4 flex items-center gap-2">
+          <ThemeToggle />
+          {user && <UserMenu />}
         </div>
-      ) : user ? (
-        <TodoApp />
-      ) : (
-        <Login />
-      )}
-    </div>
+        
+        {loading ? (
+          <div className="flex items-center justify-center min-h-[300px]">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          </div>
+        ) : user ? (
+          <TodoApp />
+        ) : (
+          <Login />
+        )}
+      </div>
+    </>
   );
 }
