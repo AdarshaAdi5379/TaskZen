@@ -6,9 +6,27 @@ import { useAuth } from "@/components/auth/auth-context";
 import { Login } from "@/components/auth/login";
 import { UserMenu } from "@/components/auth/user-menu";
 import { Loader2 } from "lucide-react";
+import { AdminPanel } from "@/components/admin/admin-panel";
 
 export default function Home() {
-  const { user, loading } = useAuth();
+  const { user, isAdmin, loading } = useAuth();
+
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center min-h-[300px]">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+      );
+    }
+    if (!user) {
+      return <Login />;
+    }
+    if (isAdmin) {
+      return <AdminPanel />;
+    }
+    return <TodoApp />;
+  };
 
   return (
     <>
@@ -18,15 +36,7 @@ export default function Home() {
           {user && <UserMenu />}
         </div>
         
-        {loading ? (
-          <div className="flex items-center justify-center min-h-[300px]">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          </div>
-        ) : user ? (
-          <TodoApp />
-        ) : (
-          <Login />
-        )}
+        {renderContent()}
       </div>
     </>
   );

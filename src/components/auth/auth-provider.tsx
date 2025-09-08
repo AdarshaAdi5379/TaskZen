@@ -3,36 +3,51 @@
 import { useState, useEffect } from 'react';
 import { onAuthStateChanged, signInWithPopup, signOut as firebaseSignOut, type User, GoogleAuthProvider } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
+import type { AuthContextType, UserProfile } from './auth-context';
 import { AuthContext } from './auth-context';
 import { useToast } from '@/hooks/use-toast';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
+        setUser(user);
+        // Listen for profile changes
         const userRef = doc(db, 'users', user.uid);
-        const docSnap = await getDoc(userRef);
-        if (!docSnap.exists()) {
-          // Store user data in Firestore
-          await setDoc(userRef, {
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName,
-            photoURL: user.photoURL,
-            createdAt: new Date(),
-          });
-        }
+        const unsubscribeProfile = onSnapshot(userRef, (docSnap) => {
+          if (docSnap.exists()) {
+            setUserProfile(docSnap.data() as UserProfile);
+          } else {
+            // Create user profile if it doesn't exist
+            const newUserProfile: UserProfile = {
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName,
+              photoURL: user.photoURL,
+              createdAt: new Date(),
+              role: 'user', // Default role
+              status: 'active', // Default status
+            };
+            setDoc(userRef, newUserProfile);
+            setUserProfile(newUserProfile);
+          }
+          setLoading(false);
+        });
+        return () => unsubscribeProfile();
+      } else {
+        setUser(null);
+        setUserProfile(null);
+        setLoading(false);
       }
-      setUser(user);
-      setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => unsubscribeAuth();
   }, []);
 
   const signInWithGoogle = async () => {
@@ -49,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         variant: "destructive"
       })
     } finally {
-      setLoading(false);
+      // Loading state will be updated by onAuthStateChanged
     }
   };
 
@@ -66,8 +81,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const isAdmin = userProfile?.role === 'admin';
+
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{ user, userProfile, isAdmin, loading, signInWithGoogle, signOut }}>
       {children}
     </AuthContext.Provider>
   );
