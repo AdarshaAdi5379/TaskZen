@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { getFirebaseDb } from "@/lib/firebase";
 import type { UserProfile } from "@/components/auth/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, Loader2 } from "lucide-react";
@@ -16,22 +16,29 @@ export function AdminPanel() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const usersQuery = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
-    
-    const unsubscribe = onSnapshot(usersQuery, (snapshot) => {
-      const usersData = snapshot.docs.map(doc => ({
-        ...doc.data(),
-        createdAt: doc.data().createdAt.toDate(), // Convert Timestamp to Date
-      })) as UserProfile[];
-      setUsers(usersData);
-      setLoading(false);
-    }, (error) => {
-      console.error("Error fetching users:", error);
-      toast({ title: "Error", description: "Could not fetch users.", variant: "destructive" });
-      setLoading(false);
-    });
+    try {
+      const db = getFirebaseDb();
+      const usersQuery = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
+      
+      const unsubscribe = onSnapshot(usersQuery, (snapshot) => {
+        const usersData = snapshot.docs.map(doc => ({
+          ...doc.data(),
+          createdAt: doc.data().createdAt.toDate(), // Convert Timestamp to Date
+        })) as UserProfile[];
+        setUsers(usersData);
+        setLoading(false);
+      }, (error) => {
+        console.error("Error fetching users:", error);
+        toast({ title: "Error", description: "Could not fetch users.", variant: "destructive" });
+        setLoading(false);
+      });
 
-    return () => unsubscribe();
+      return () => unsubscribe();
+    } catch (e) {
+      console.error("Failed to get DB instance in AdminPanel", e);
+      toast({ title: "Error", description: "Could not connect to the database.", variant: "destructive" });
+      setLoading(false);
+    }
   }, [toast]);
 
   return (

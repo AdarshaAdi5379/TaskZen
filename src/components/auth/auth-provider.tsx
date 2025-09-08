@@ -2,9 +2,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { onAuthStateChanged, signInWithPopup, signOut as firebaseSignOut, type User, GoogleAuthProvider, getAuth } from 'firebase/auth';
-import { app } from '@/lib/firebase'; // Keep app import
-import { doc, setDoc, onSnapshot, serverTimestamp, getDoc, getFirestore } from 'firebase/firestore';
+import { onAuthStateChanged, signInWithPopup, signOut as firebaseSignOut, type User, GoogleAuthProvider } from 'firebase/auth';
+import { getFirebaseApp, getFirebaseAuth, getFirebaseDb } from '@/lib/firebase';
+import { doc, setDoc, onSnapshot, serverTimestamp, getDoc } from 'firebase/firestore';
 import type { AuthContextType, UserProfile } from './auth-context';
 import { AuthContext } from './auth-context';
 import { useToast } from '@/hooks/use-toast';
@@ -17,8 +17,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const handleUserProfile = useCallback((user: User | null) => {
     if (user) {
-      const firestore = getFirestore(app);
-      const userRef = doc(firestore, 'users', user.uid);
+      const db = getFirebaseDb();
+      const userRef = doc(db, 'users', user.uid);
       const unsubscribe = onSnapshot(userRef, (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
@@ -41,27 +41,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const auth = getAuth(app); // Get auth instance inside useEffect
-    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      const unsubscribeProfile = handleUserProfile(currentUser);
-      return () => unsubscribeProfile();
-    });
-
-    return () => unsubscribeAuth();
+    try {
+      getFirebaseApp(); // Ensure app is initialized before setting up auth listener
+      const auth = getFirebaseAuth();
+      const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+        setUser(currentUser);
+        const unsubscribeProfile = handleUserProfile(currentUser);
+        return () => unsubscribeProfile();
+      });
+       return () => unsubscribeAuth();
+    } catch(e) {
+      console.error(e);
+      setLoading(false);
+    }
   }, [handleUserProfile]);
 
   const signInWithGoogle = async () => {
     setLoading(true);
-    const auth = getAuth(app); // Get auth instance
-    const firestore = getFirestore(app); // get db instance
+    const auth = getFirebaseAuth();
+    const db = getFirebaseDb();
     const googleProvider = new GoogleAuthProvider();
     googleProvider.addScope('https://www.googleapis.com/auth/calendar.events');
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
       
-      const userRef = doc(firestore, 'users', user.uid);
+      const userRef = doc(db, 'users', user.uid);
       const docSnap = await getDoc(userRef);
 
       if (!docSnap.exists()) {
@@ -74,7 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           role: 'user', // Default role
           status: 'active', // Default status
         };
-        await setDoc(userRef, newUserProfile, { merge: true });
+        await setDoc(userRef, newUserRef, { merge: true });
       }
       
     } catch (error: any) {
@@ -92,7 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    const auth = getAuth(app); // Get auth instance
+    const auth = getFirebaseAuth();
     try {
       await firebaseSignOut(auth);
     } catch (error) {

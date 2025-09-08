@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getFirebaseDb } from '@/lib/firebase';
 import Cors from 'micro-cors';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -50,50 +50,57 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     // Successfully constructed event.
     console.log('✅ Success:', event.id);
 
+    try {
+      const db = getFirebaseDb();
+      // Cast event data to Stripe object.
+      if (event.type === 'checkout.session.completed') {
+          const session = event.data.object as Stripe.Checkout.Session;
+          const { client_reference_id: userId, subscription } = session;
+          
+          if(!userId || !subscription) {
+              return res.status(400).send('Webhook Error: Missing userId or subscription');
+          }
 
-    // Cast event data to Stripe object.
-    if (event.type === 'checkout.session.completed') {
-        const session = event.data.object as Stripe.Checkout.Session;
-        const { client_reference_id: userId, subscription } = session;
-        
-        if(!userId || !subscription) {
-             return res.status(400).send('Webhook Error: Missing userId or subscription');
-        }
+          const userRef = doc(db, 'users', userId);
+          await updateDoc(userRef, {
+              subscriptionId: subscription,
+              subscriptionStatus: 'active',
+          });
 
-        const userRef = doc(db, 'users', userId);
-        await updateDoc(userRef, {
-            subscriptionId: subscription,
-            subscriptionStatus: 'active',
-        });
+      } else if (event.type === 'customer.subscription.updated') {
+          const subscription = event.data.object as Stripe.Subscription;
+          const { status, current_period_end } = subscription;
+          const userId = subscription.metadata.userId;
 
-    } else if (event.type === 'customer.subscription.updated') {
-        const subscription = event.data.object as Stripe.Subscription;
-        const { status, current_period_end } = subscription;
-        const userId = subscription.metadata.userId;
+          if(!userId) {
+              return res.status(400).send('Webhook Error: Missing userId in subscription metadata');
+          }
 
-        if(!userId) {
-            return res.status(400).send('Webhook Error: Missing userId in subscription metadata');
-        }
-
-        const userRef = doc(db, 'users', userId);
-        await updateDoc(userRef, {
-            subscriptionStatus: status,
-            subscriptionEndsAt: new Date(current_period_end * 1000),
-        });
-    } else if (event.type === 'customer.subscription.deleted') {
-        const subscription = event.data.object as Stripe.Subscription;
-        const userId = subscription.metadata.userId;
-        if(!userId) {
-            return res.status(400).send('Webhook Error: Missing userId in subscription metadata');
-        }
-        
-        const userRef = doc(db, 'users', userId);
-        await updateDoc(userRef, {
-            subscriptionStatus: 'canceled',
-        });
-    } else {
-      console.warn(`🤷‍♀️ Unhandled event type: ${event.type}`);
+          const userRef = doc(db, 'users', userId);
+          await updateDoc(userRef, {
+              subscriptionStatus: status,
+              subscriptionEndsAt: new Date(current_period_end * 1000),
+          });
+      } else if (event.type === 'customer.subscription.deleted') {
+          const subscription = event.data.object as Stripe.Subscription;
+          const userId = subscription.metadata.userId;
+          if(!userId) {
+              return res.status(400).send('Webhook Error: Missing userId in subscription metadata');
+          }
+          
+          const userRef = doc(db, 'users', userId);
+          await updateDoc(userRef, {
+              subscriptionStatus: 'canceled',
+          });
+      } else {
+        console.warn(`🤷‍♀️ Unhandled event type: ${event.type}`);
+      }
+    } catch (e) {
+      console.error("Error handling Stripe webhook:", e);
+      res.status(500).send("Internal server error handling webhook.");
+      return;
     }
+
 
     // Return a response to acknowledge receipt of the event.
     res.json({ received: true });
