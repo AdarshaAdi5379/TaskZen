@@ -14,13 +14,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "./auth-context";
-import { LogOut, Palette } from "lucide-react";
+import { LogOut, Palette, Zap } from "lucide-react";
 import { Button } from "../ui/button";
 import { useTheme } from "next-themes";
+import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 
 export function UserMenu() {
   const { user, signOut } = useAuth();
   const { setTheme } = useTheme();
+  const { toast } = useToast();
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   if (!user) return null;
   
@@ -32,6 +36,37 @@ export function UserMenu() {
     }
     return name[0];
   }
+
+  const handleUpgrade = async () => {
+    setIsRedirecting(true);
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: user.email, userId: user.uid }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to create checkout session');
+      }
+
+      const { sessionId } = await res.json();
+      // Redirect to Stripe Checkout
+      window.location.href = `https://checkout.stripe.com/pay/${sessionId}`;
+
+    } catch (error) {
+      console.error("Stripe checkout error:", error);
+      toast({
+        title: "Error",
+        description: "Could not redirect to checkout. Please try again.",
+        variant: "destructive"
+      });
+      setIsRedirecting(false);
+    }
+  }
+
 
   return (
     <DropdownMenu>
@@ -53,6 +88,10 @@ export function UserMenu() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleUpgrade} disabled={isRedirecting}>
+            <Zap className="mr-2 h-4 w-4" />
+            <span>{isRedirecting ? "Redirecting..." : "Upgrade to Pro"}</span>
+        </DropdownMenuItem>
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <Palette className="mr-2 h-4 w-4" />
