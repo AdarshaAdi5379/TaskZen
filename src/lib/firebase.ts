@@ -3,13 +3,12 @@ import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  projectId: 'taskzen-4o5su',
-  appId: '1:409036252128:web:3a73b3f4ea8af933398185',
-  storageBucket: 'taskzen-4o5su.firebasestorage.app',
-  apiKey: 'AIzaSyAyPicSP2sLcAk3C5ESihJIoT1XdX6tNAI',
-  authDomain: 'taskzen-4o5su.firebaseapp.com',
-  measurementId: '',
-  messagingSenderId: '409036252128',
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
