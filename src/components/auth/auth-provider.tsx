@@ -38,12 +38,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               displayName: user.displayName,
               photoURL: user.photoURL,
               createdAt: serverTimestamp(),
-              role: user.email === 'adarshakk1234@gmail.com' ? 'admin' : 'user', // Set admin role for specific email
+              role: 'user', // Default role
               status: 'active', // Default status
               subscriptionId: null,
               subscriptionStatus: null,
               subscriptionEndsAt: null,
             };
+            if(user.email === 'adarshakk1234@gmail.com') {
+              newUserProfile.role = 'admin'
+            }
             setDoc(userRef, newUserProfile);
             setUserProfile({
                 ...newUserProfile,
