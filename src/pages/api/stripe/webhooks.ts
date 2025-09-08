@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
-import { buffer } from 'micro';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import Cors from 'micro-cors';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
@@ -17,15 +17,28 @@ export const config = {
   },
 };
 
+const cors = Cors({
+  allowMethods: ['POST', 'HEAD'],
+});
+
+async function getRawBody(req: NextApiRequest): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    req.on('data', (chunk) => chunks.push(chunk));
+    req.on('error', reject);
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+  });
+}
+
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
-    const buf = await buffer(req);
+    const buf = await getRawBody(req);
     const sig = req.headers['stripe-signature']!;
 
     let event: Stripe.Event;
 
     try {
-      event = stripe.webhooks.constructEvent(buf.toString(), sig, webhookSecret);
+      event = stripe.webhooks.constructEvent(buf, sig, webhookSecret);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       // On error, log and return the error message.
@@ -90,4 +103,4 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 };
 
-export default handler;
+export default cors(handler as any);
