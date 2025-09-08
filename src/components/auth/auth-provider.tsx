@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { onAuthStateChanged, signInWithPopup, signOut as firebaseSignOut, type User, GoogleAuthProvider } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, getDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import type { AuthContextType, UserProfile } from './auth-context';
 import { AuthContext } from './auth-context';
 import { useToast } from '@/hooks/use-toast';
@@ -22,20 +22,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userRef = doc(db, 'users', user.uid);
         const unsubscribeProfile = onSnapshot(userRef, (docSnap) => {
           if (docSnap.exists()) {
-            setUserProfile(docSnap.data() as UserProfile);
+             const data = docSnap.data();
+             const profile = {
+                ...data,
+                createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
+                subscriptionEndsAt: data.subscriptionEndsAt?.toDate ? data.subscriptionEndsAt.toDate() : null,
+             } as UserProfile;
+            setUserProfile(profile);
           } else {
             // Create user profile if it doesn't exist
-            const newUserProfile: UserProfile = {
+            const newUserProfile: Omit<UserProfile, 'createdAt'> & {createdAt: any} = {
               uid: user.uid,
               email: user.email,
               displayName: user.displayName,
               photoURL: user.photoURL,
-              createdAt: new Date(),
+              createdAt: serverTimestamp(),
               role: 'user', // Default role
               status: 'active', // Default status
+              subscriptionId: null,
+              subscriptionStatus: null,
+              subscriptionEndsAt: null,
             };
             setDoc(userRef, newUserProfile);
-            setUserProfile(newUserProfile);
+            setUserProfile({
+                ...newUserProfile,
+                createdAt: new Date(),
+                subscriptionEndsAt: null
+            } as UserProfile);
           }
           setLoading(false);
         });

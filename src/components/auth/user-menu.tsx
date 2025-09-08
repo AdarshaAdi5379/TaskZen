@@ -14,17 +14,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "./auth-context";
-import { LogOut, Palette, Zap } from "lucide-react";
+import { LogOut, Palette, Zap, Gem } from "lucide-react";
 import { Button } from "../ui/button";
 import { useTheme } from "next-themes";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 
 export function UserMenu() {
-  const { user, signOut } = useAuth();
+  const { user, userProfile, signOut } = useAuth();
   const { setTheme } = useTheme();
   const { toast } = useToast();
   const [isRedirecting, setIsRedirecting] = useState(false);
+  
+  const isPro = userProfile?.subscriptionStatus === 'active';
 
   if (!user) return null;
   
@@ -88,10 +90,17 @@ export function UserMenu() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleUpgrade} disabled={isRedirecting}>
-            <Zap className="mr-2 h-4 w-4" />
-            <span>{isRedirecting ? "Redirecting..." : "Upgrade to Pro"}</span>
-        </DropdownMenuItem>
+         {isPro ? (
+            <DropdownMenuItem disabled>
+                <Gem className="mr-2 h-4 w-4 text-primary" />
+                <span>Pro Member</span>
+            </DropdownMenuItem>
+        ) : (
+            <DropdownMenuItem onClick={handleUpgrade} disabled={isRedirecting}>
+                <Zap className="mr-2 h-4 w-4" />
+                <span>{isRedirecting ? "Redirecting..." : "Upgrade to Pro"}</span>
+            </DropdownMenuItem>
+        )}
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <Palette className="mr-2 h-4 w-4" />

@@ -11,7 +11,10 @@ export interface UserProfile {
   createdAt: Date;
   role: 'user' | 'admin';
   status: 'active' | 'suspended';
-  // Add other fields like subscriptionStatus later
+  // Stripe subscription fields
+  subscriptionId?: string;
+  subscriptionStatus?: 'active' | 'canceled' | 'incomplete' | 'past_due' | 'unpaid' | null;
+  subscriptionEndsAt?: Date | null;
 }
 
 export interface AuthContextType {

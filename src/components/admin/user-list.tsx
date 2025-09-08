@@ -20,7 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Shield, UserCog, UserX } from "lucide-react";
+import { MoreHorizontal, Shield, UserCog, UserX, Gem } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -68,6 +68,7 @@ export function UserList({ users }: UserListProps) {
           <TableRow>
             <TableHead>User</TableHead>
             <TableHead className="hidden sm:table-cell">Role</TableHead>
+            <TableHead className="hidden md:table-cell">Subscription</TableHead>
             <TableHead className="hidden md:table-cell">Status</TableHead>
             <TableHead className="hidden md:table-cell">Created At</TableHead>
             <TableHead>
@@ -93,6 +94,14 @@ export function UserList({ users }: UserListProps) {
               <TableCell className="hidden sm:table-cell">
                 <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
                   {user.role}
+                </Badge>
+              </TableCell>
+               <TableCell className="hidden md:table-cell">
+                 <Badge variant={user.subscriptionStatus === 'active' ? 'default' : 'outline'}>
+                    <div className="flex items-center gap-1">
+                        {user.subscriptionStatus === 'active' && <Gem className="h-3 w-3" />}
+                        {user.subscriptionStatus || 'none'}
+                    </div>
                 </Badge>
               </TableCell>
               <TableCell className="hidden md:table-cell">
