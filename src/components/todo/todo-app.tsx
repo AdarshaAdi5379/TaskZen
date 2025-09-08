@@ -10,7 +10,7 @@ import { TaskZenIcon } from './taskzen-icon';
 import { Button } from '../ui/button';
 import { useAuth } from '@/components/auth/auth-context';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, doc, setDoc, deleteDoc, writeBatch, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, setDoc, deleteDoc, writeBatch, onSnapshot, orderBy, Timestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
 export function TodoApp() {
@@ -25,7 +25,7 @@ export function TodoApp() {
       try {
         const storedTodos = localStorage.getItem('todos');
         if (storedTodos) {
-          setTodos(JSON.parse(storedTodos));
+          setTodos(JSON.parse(storedTodos).map((t: any) => ({...t, deadline: t.deadline ? new Date(t.deadline) : undefined, createdAt: t.createdAt ? new Date(t.createdAt): undefined })));
         }
       } catch (error) {
         console.error("Failed to parse todos from localStorage", error);
@@ -40,7 +40,16 @@ export function TodoApp() {
     const q = query(todosCollection, orderBy('createdAt', 'desc'));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const todosData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Todo));
+      const todosData = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return { 
+          ...data,
+          id: doc.id,
+          // Firestore Timestamps need to be converted to JS Dates
+          createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : data.createdAt,
+          deadline: data.deadline instanceof Timestamp ? data.deadline.toDate() : data.deadline,
+        } as Todo
+      });
       setTodos(todosData);
       setLoading(false);
     }, (error) => {
@@ -73,12 +82,13 @@ export function TodoApp() {
     }
   }, [todos, user]);
 
-  const addTodo = async (text: string) => {
+  const addTodo = async (text: string, deadline?: Date) => {
     const newTodo: Todo = {
       id: doc(collection(db, 'temp')).id,
       text,
       completed: false,
       createdAt: new Date(),
+      deadline: deadline,
     };
 
     if (user) {
