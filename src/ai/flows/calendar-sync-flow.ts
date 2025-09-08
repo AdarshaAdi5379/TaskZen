@@ -3,7 +3,7 @@
  * @fileOverview A Genkit flow for synchronizing tasks with Google Calendar.
  *
  * - syncToCalendar - A function that takes a list of tasks and creates events in Google Calendar.
- * - CalendarSyncInput - The input type for the syncToCalendar function.
+ * - CalendarSyncInput - The input type for the syncToCale   ndar function.
  * - CalendarSyncOutput - The return type for the syncToCalendar function.
  */
 
