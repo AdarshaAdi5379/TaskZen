@@ -14,7 +14,7 @@ interface TodoItemProps {
 }
 
 export function TodoItem({ todo, onToggle, onDelete }: TodoItemProps) {
-  const deadlineDate = todo.deadline ? new Date((todo.deadline as any).seconds * 1000) : null;
+  const deadlineDate = todo.deadline ? new Date(todo.deadline) : null;
   
   const isOverdue = deadlineDate && !todo.completed ? new Date() > deadlineDate : false;
 

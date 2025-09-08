@@ -10,11 +10,12 @@ interface TodoFiltersProps {
 
 export function TodoFilters({ filter, onSetFilter }: TodoFiltersProps) {
   return (
-    <Tabs value={filter} onValueChange={(value) => onSetFilter(value as Filter)} className="w-full max-w-[280px]">
-      <TabsList className="grid w-full grid-cols-3">
+    <Tabs value={filter} onValueChange={(value) => onSetFilter(value as Filter)} className="w-full max-w-xs">
+      <TabsList className="grid w-full grid-cols-4">
         <TabsTrigger value="all">All</TabsTrigger>
         <TabsTrigger value="pending">Pending</TabsTrigger>
         <TabsTrigger value="completed">Completed</TabsTrigger>
+        <TabsTrigger value="history">History</TabsTrigger>
       </TabsList>
     </Tabs>
   );

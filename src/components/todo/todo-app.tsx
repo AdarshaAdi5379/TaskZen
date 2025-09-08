@@ -12,6 +12,7 @@ import { useAuth } from '@/components/auth/auth-context';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, doc, setDoc, deleteDoc, writeBatch, onSnapshot, orderBy, Timestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { HistoryView } from './history-view';
 
 export function TodoApp() {
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -25,7 +26,12 @@ export function TodoApp() {
       try {
         const storedTodos = localStorage.getItem('todos');
         if (storedTodos) {
-          setTodos(JSON.parse(storedTodos).map((t: any) => ({...t, deadline: t.deadline ? new Date(t.deadline) : undefined, createdAt: t.createdAt ? new Date(t.createdAt): undefined })));
+          setTodos(JSON.parse(storedTodos).map((t: any) => ({
+            ...t,
+            deadline: t.deadline ? new Date(t.deadline) : undefined,
+            createdAt: t.createdAt ? new Date(t.createdAt): undefined,
+            completedAt: t.completedAt ? new Date(t.completedAt) : undefined,
+          })));
         }
       } catch (error) {
         console.error("Failed to parse todos from localStorage", error);
@@ -45,9 +51,9 @@ export function TodoApp() {
         return { 
           ...data,
           id: doc.id,
-          // Firestore Timestamps need to be converted to JS Dates
           createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : data.createdAt,
           deadline: data.deadline instanceof Timestamp ? data.deadline.toDate() : data.deadline,
+          completedAt: data.completedAt instanceof Timestamp ? data.completedAt.toDate() : data.completedAt,
         } as Todo
       });
       setTodos(todosData);
@@ -107,7 +113,12 @@ export function TodoApp() {
     const todoToToggle = todos.find(todo => todo.id === id);
     if (!todoToToggle) return;
 
-    const updatedTodo = { ...todoToToggle, completed: !todoToToggle.completed };
+    const isCompleted = !todoToToggle.completed;
+    const updatedTodo: Todo = { 
+      ...todoToToggle, 
+      completed: isCompleted,
+      completedAt: isCompleted ? new Date() : undefined
+    };
 
     if (user) {
         try {
@@ -136,38 +147,21 @@ export function TodoApp() {
     }
   };
 
-  const clearCompleted = async () => {
-    if (user) {
-        const batch = writeBatch(db);
-        const completedTodos = todos.filter(todo => todo.completed);
-        completedTodos.forEach(todo => {
-            const todoRef = doc(db, 'users', user.uid, 'todos', todo.id);
-            batch.delete(todoRef);
-        });
-        try {
-            await batch.commit();
-        } catch (error) {
-            console.error("Error clearing completed todos:", error);
-            toast({ title: "Error", description: "Failed to clear completed tasks.", variant: "destructive" });
-        }
-    } else {
-        setTodos(todos.filter(todo => !todo.completed));
-    }
-  };
-
   const filteredTodos = useMemo(() => {
+    const sortedTodos = [...todos].sort((a,b) => (a.createdAt && b.createdAt) ? b.createdAt.getTime() - a.createdAt.getTime() : 0);
     switch (filter) {
       case 'pending':
-        return todos.filter(todo => !todo.completed);
+        return sortedTodos.filter(todo => !todo.completed);
       case 'completed':
-        return todos.filter(todo => todo.completed);
+        return sortedTodos.filter(todo => todo.completed);
+      case 'history':
+        return sortedTodos.filter(todo => todo.completed);
       default:
-        return todos;
+        return sortedTodos;
     }
   }, [todos, filter]);
   
   const pendingCount = useMemo(() => todos.filter(t => !t.completed).length, [todos]);
-  const completedCount = useMemo(() => todos.length - pendingCount, [todos, pendingCount]);
 
   return (
     <Card className="w-full max-w-lg shadow-2xl backdrop-blur-sm bg-card/80 dark:bg-card/60 border-2">
@@ -178,26 +172,27 @@ export function TodoApp() {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="px-2">
-          <TodoForm onAddTodo={addTodo} />
-        </div>
+        {filter !== 'history' &&
+          <div className="px-2">
+            <TodoForm onAddTodo={addTodo} />
+          </div>
+        }
         <div className="mt-4 min-h-[24rem]">
-          <TodoList todos={filteredTodos} onToggleTodo={toggleTodo} onDeleteTodo={deleteTodo} loading={loading} />
+          { filter === 'history' ? (
+            <HistoryView completedTodos={filteredTodos.filter(t => t.completed)} />
+          ) : (
+            <TodoList todos={filteredTodos} onToggleTodo={toggleTodo} onDeleteTodo={deleteTodo} loading={loading} />
+          )}
         </div>
       </CardContent>
       {todos.length > 0 && (
           <CardFooter className="flex-col sm:flex-row gap-4 justify-between items-center text-sm text-muted-foreground border-t pt-4">
               <span>{pendingCount} tasks left</span>
-              <div className="hidden md:block">
+              <div className="flex-grow flex justify-center">
                   <TodoFilters filter={filter} onSetFilter={setFilter} />
               </div>
-              <Button onClick={clearCompleted} variant="ghost" className="hover:text-primary disabled:opacity-50" disabled={completedCount === 0}>Clear completed</Button>
+              <span className="w-[88px]"></span>
           </CardFooter>
-      )}
-      {todos.length > 0 && (
-          <div className="md:hidden border-t p-4 flex justify-center items-center text-sm text-muted-foreground">
-              <TodoFilters filter={filter} onSetFilter={setFilter} />
-          </div>
       )}
     </Card>
   );

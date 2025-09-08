@@ -4,6 +4,7 @@ export type Todo = {
   completed: boolean;
   createdAt?: Date;
   deadline?: Date;
+  completedAt?: Date;
 };
 
-export type Filter = "all" | "pending" | "completed";
+export type Filter = "all" | "pending" | "completed" | "history";
