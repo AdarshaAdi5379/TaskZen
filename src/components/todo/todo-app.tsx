@@ -10,7 +10,7 @@ import { TaskZenIcon } from './taskzen-icon';
 import { Button } from '../ui/button';
 import { useAuth } from '@/components/auth/auth-context';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, doc, setDoc, deleteDoc, writeBatch, onSnapshot, orderBy, Timestamp, addDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, setDoc, deleteDoc, writeBatch, onSnapshot, orderBy, Timestamp, addDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { HistoryView } from './history-view';
 import { ProjectSelector } from './project-selector';
@@ -182,6 +182,41 @@ export function TodoApp() {
     }
   }
 
+  const shareProject = async (email: string) => {
+    if (!currentProjectId || !user) return;
+
+    if(email === user.email) {
+      toast({ title: "You can't share a project with yourself.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      // Find user by email
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("email", "==", email));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        toast({ title: "Error", description: "User with that email not found.", variant: "destructive" });
+        return;
+      }
+
+      const userToShareWith = querySnapshot.docs[0].data();
+      const projectRef = doc(db, 'projects', currentProjectId);
+
+      // Add user to project members
+      await updateDoc(projectRef, {
+        members: arrayUnion(userToShareWith.uid)
+      });
+      
+      toast({ title: "Success", description: `Project shared with ${email}.` });
+
+    } catch (error) {
+      console.error("Error sharing project:", error);
+      toast({ title: "Error", description: "Failed to share project.", variant: "destructive" });
+    }
+  }
+
   const filteredTodos = useMemo(() => {
     const activeTodos = todos.filter(todo => todo.projectId === currentProjectId);
     const sortedTodos = [...activeTodos].sort((a,b) => (a.createdAt && b.createdAt) ? b.createdAt.getTime() - a.createdAt.getTime() : 0);
@@ -215,6 +250,7 @@ export function TodoApp() {
             currentProject={currentProject}
             onSelectProject={setCurrentProjectId}
             onCreateProject={createProject}
+            onShareProject={shareProject}
           />
           {filter !== 'history' &&
               <TodoForm onAddTodo={addTodo} />
