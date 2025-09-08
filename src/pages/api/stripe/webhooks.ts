@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
 import { buffer } from 'micro';
 import { doc, updateDoc } from 'firebase/firestore';
-import { getFirebaseDb } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
@@ -37,7 +37,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     // Successfully constructed event.
     console.log('✅ Success:', event.id);
 
-    const db = getFirebaseDb();
 
     // Cast event data to Stripe object.
     if (event.type === 'checkout.session.completed') {

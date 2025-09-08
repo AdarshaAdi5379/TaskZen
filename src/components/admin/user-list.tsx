@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import { MoreHorizontal, Shield, UserCog, UserX, Gem, Gift } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { doc, updateDoc } from "firebase/firestore";
-import { getFirebaseDb } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { add } from "date-fns";
 
@@ -49,7 +49,6 @@ export function UserList({ users }: UserListProps) {
 
     const updateUser = async (uid: string, data: Partial<UserProfile>) => {
         try {
-            const db = getFirebaseDb();
             const userRef = doc(db, 'users', uid);
             await updateDoc(userRef, data);
             toast({

@@ -11,18 +11,9 @@ const firebaseConfig = {
   appId: "1:409036252128:web:3a73b3f4ea8af933398185",
 };
 
-// Initialize Firebase for SSR
-const getAppInstance = (): FirebaseApp => {
-    if (!getApps().length) {
-        return initializeApp(firebaseConfig);
-    }
-    return getApp();
-}
+// Initialize Firebase
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-export const getFirebaseAuth = (): Auth => {
-    return getAuth(getAppInstance());
-}
-
-export const getFirebaseDb = (): Firestore => {
-    return getFirestore(getAppInstance());
-}
+export { app, auth, db };
