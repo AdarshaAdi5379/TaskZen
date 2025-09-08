@@ -14,6 +14,8 @@ import { collection, query, where, getDocs, doc, setDoc, deleteDoc, writeBatch, 
 import { useToast } from '@/hooks/use-toast';
 import { HistoryView } from './history-view';
 import { ProjectSelector } from './project-selector';
+import { CalendarSync } from 'lucide-react';
+import { syncToCalendar } from '@/ai/flows/calendar-sync-flow';
 
 async function migrateUserTasks(userId: string, defaultProjectId: string) {
     const oldTodosRef = collection(db, 'users', userId, 'todos');
@@ -53,6 +55,7 @@ export function TodoApp() {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -235,6 +238,24 @@ export function TodoApp() {
     }
   }
 
+  const handleSyncToCalendar = async () => {
+    if (!currentProjectId) return;
+    setIsSyncing(true);
+    try {
+      const tasksToSync = todos.filter(t => t.projectId === currentProjectId && t.deadline && !t.completed);
+      const result = await syncToCalendar(tasksToSync);
+      toast({
+        title: "Sync Successful",
+        description: `${result.syncedEvents} tasks have been synced to your Google Calendar.`
+      });
+    } catch (error) {
+       console.error("Error syncing to calendar:", error);
+       toast({ title: "Sync Error", description: "Could not sync tasks to Google Calendar.", variant: "destructive" });
+    } finally {
+      setIsSyncing(false);
+    }
+  }
+
   const filteredTodos = useMemo(() => {
     const activeTodos = todos.filter(todo => todo.projectId === currentProjectId);
     const sortedTodos = [...activeTodos].sort((a,b) => (a.createdAt && b.createdAt) ? b.createdAt.getTime() - a.createdAt.getTime() : 0);
@@ -292,11 +313,18 @@ export function TodoApp() {
       </CardContent>
       {todos.length > 0 && (
           <CardFooter className="flex-col sm:flex-row gap-4 justify-between items-center text-sm text-muted-foreground border-t pt-4">
-              <span>{pendingCount} tasks left</span>
+              <div className="flex items-center gap-2">
+                <span>{pendingCount} tasks left</span>
+              </div>
               <div className="flex-grow flex justify-center">
                   <TodoFilters filter={filter} onSetFilter={setFilter} />
               </div>
-              <span className="w-[88px]"></span>
+               <Button variant="outline" size="sm" onClick={handleSyncToCalendar} disabled={isSyncing}>
+                  <CalendarSync className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                  <span className="ml-2 hidden sm:inline">
+                    {isSyncing ? "Syncing..." : "Sync to Calendar"}
+                  </span>
+              </Button>
           </CardFooter>
       )}
     </Card>
