@@ -8,19 +8,19 @@ import { getFirestore, type Firestore } from 'firebase/firestore';
 // You can get this configuration object from your Firebase project console.
 // Go to Project settings > General > Your apps > Firebase SDK snippet > Config.
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY", // Replace with your actual API Key
-  authDomain: "YOUR_AUTH_DOMAIN", // Replace with your actual Auth Domain
-  projectId: "YOUR_PROJECT_ID", // Replace with your actual Project ID
-  storageBucket: "YOUR_STORAGE_BUCKET", // Replace with your actual Storage Bucket
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID", // Replace with your actual Messaging Sender ID
-  appId: "YOUR_APP_ID", // Replace with your actual App ID
+  projectId: "taskzen-4o5su",
+  appId: "1:409036252128:web:3a73b3f4ea8af933398185",
+  storageBucket: "taskzen-4o5su.appspot.com",
+  apiKey: "AIzaSyAyPicSP2sLcAk3C5ESihJIoT1XdX6tNAI",
+  authDomain: "taskzen-4o5su.firebaseapp.com",
+  messagingSenderId: "409036252128",
 };
 
 // Initialize Firebase
 let app: FirebaseApp;
 
 // Check if all config values are filled
-const isConfigValid = Object.values(firebaseConfig).every(value => !value.startsWith('YOUR_'));
+const isConfigValid = Object.values(firebaseConfig).every(value => !(value.startsWith('YOUR_') || value === ''));
 
 if (isConfigValid) {
     if (!getApps().length) {
