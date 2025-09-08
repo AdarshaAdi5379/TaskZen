@@ -52,6 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithGoogle = async () => {
     setLoading(true);
     const googleProvider = new GoogleAuthProvider();
+    // This scope is crucial for the calendar sync feature to work.
     googleProvider.addScope('https://www.googleapis.com/auth/calendar.events');
     try {
       const result = await signInWithPopup(auth, googleProvider);
