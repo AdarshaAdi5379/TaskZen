@@ -3,11 +3,12 @@
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Calendar as CalendarIcon, Plus } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, Wand2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 interface TodoFormProps {
   onAddTodo: (text: string, deadline?: Date) => void;
@@ -28,14 +29,26 @@ export function TodoForm({ onAddTodo }: TodoFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-wrap sm:flex-nowrap gap-2 items-center">
-      <Input
-        type="text"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder="What needs to be done?"
-        className="flex-grow bg-muted/50 focus:bg-background"
-        aria-label="New task"
-      />
+      <div className="relative flex-grow">
+        <Input
+          type="text"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder='Try "Call John tomorrow at 5pm"'
+          className="flex-grow bg-muted/50 focus:bg-background pl-10"
+          aria-label="New task"
+        />
+        <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Wand2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent>
+                    <p>Use AI to set deadlines automatically!</p>
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
+      </div>
       <div className="flex gap-2">
         <Popover>
           <PopoverTrigger asChild>

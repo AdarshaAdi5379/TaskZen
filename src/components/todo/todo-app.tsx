@@ -16,6 +16,7 @@ import { HistoryView } from './history-view';
 import { ProjectSelector } from './project-selector';
 import { CalendarSync } from 'lucide-react';
 import { syncToCalendar } from '@/ai/flows/calendar-sync-flow';
+import { interpretTask } from '@/ai/flows/interpret-task-flow';
 import { QuickAddWidget } from './quick-add-widget';
 
 async function migrateUserTasks(userId: string, defaultProjectId: string) {
@@ -52,7 +53,7 @@ export function TodoApp() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
-  const [filter, setFilter]_useState<Filter>('all');
+  const [filter, setFilter] = useState<Filter>('all');
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -132,17 +133,30 @@ export function TodoApp() {
 
   const addTodo = async (text: string, deadline?: Date) => {
     if (!currentProjectId || !user) return;
-    
-    const newTodo: Omit<Todo, 'id'> = {
-      text,
-      completed: false,
-      createdAt: new Date(),
-      deadline: deadline,
-      projectId: currentProjectId,
-    };
 
     try {
+        let taskText = text;
+        let taskDeadline = deadline;
+
+        // If no deadline is manually set, try to parse it with AI
+        if (!deadline) {
+            const interpretedTask = await interpretTask({ text });
+            taskText = interpretedTask.text;
+            if (interpretedTask.deadline) {
+                taskDeadline = new Date(interpretedTask.deadline);
+            }
+        }
+        
+        const newTodo: Omit<Todo, 'id'> = {
+          text: taskText,
+          completed: false,
+          createdAt: new Date(),
+          deadline: taskDeadline,
+          projectId: currentProjectId,
+        };
+
         await addDoc(collection(db, 'projects', currentProjectId, 'tasks'), newTodo);
+
     } catch (error) {
         console.error("Error adding todo:", error);
         toast({ title: "Error", description: "Failed to add task.", variant: "destructive" });
