@@ -18,18 +18,13 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
-  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Shield, UserCog, UserX, Gem, Gift } from "lucide-react";
+import { MoreHorizontal, Shield, UserCog, UserX, Gem } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { doc, updateDoc } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
-import { add } from "date-fns";
 
 interface UserListProps {
   users: UserProfile[];
@@ -66,29 +61,6 @@ export function UserList({ users }: UserListProps) {
         }
     }
     
-    const grantPro = (uid: string, duration: 'month' | 'year' | 'revoke') => {
-        let subscriptionEndsAt: Date | null = null;
-        let subscriptionStatus: UserProfile['subscriptionStatus'] = 'active';
-        let subscriptionId: string | null = 'granted_by_admin';
-
-        if (duration === 'month') {
-            subscriptionEndsAt = add(new Date(), { months: 1 });
-        } else if (duration === 'year') {
-            subscriptionEndsAt = add(new Date(), { years: 1 });
-        } else { // revoke
-            subscriptionEndsAt = new Date();
-            subscriptionStatus = 'canceled';
-            subscriptionId = null;
-        }
-
-        updateUser(uid, { 
-            subscriptionStatus,
-            subscriptionEndsAt,
-            subscriptionId,
-        });
-    }
-
-
   return (
     <div className="rounded-lg border">
       <Table>
@@ -151,27 +123,6 @@ export function UserList({ users }: UserListProps) {
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                     <DropdownMenuSub>
-                      <DropdownMenuSubTrigger>
-                        <Gift className="mr-2 h-4 w-4" />
-                        <span>Grant Pro</span>
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuPortal>
-                        <DropdownMenuSubContent>
-                          <DropdownMenuItem onClick={() => grantPro(user.uid, 'month')}>
-                            1 Month
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => grantPro(user.uid, 'year')}>
-                            1 Year
-                          </DropdownMenuItem>
-                           <DropdownMenuSeparator />
-                           <DropdownMenuItem className="text-destructive" onClick={() => grantPro(user.uid, 'revoke')}>
-                            Revoke
-                          </DropdownMenuItem>
-                        </DropdownMenuSubContent>
-                      </DropdownMenuPortal>
-                    </DropdownMenuSub>
-                     <DropdownMenuSeparator />
                     {user.role !== 'admin' && (
                         <DropdownMenuItem onClick={() => updateUser(user.uid, { role: 'admin' })}>
                             <Shield className="mr-2 h-4 w-4"/>

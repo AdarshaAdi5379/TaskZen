@@ -11,9 +11,10 @@ export interface UserProfile {
   createdAt: Date;
   role: 'user' | 'admin';
   status: 'active' | 'suspended';
-  // Stripe subscription fields
-  subscriptionId?: string;
-  subscriptionStatus?: 'active' | 'canceled' | 'incomplete' | 'past_due' | 'unpaid' | null;
+  // Razorpay subscription fields
+  razorpayPlanId?: string;
+  razorpaySubscriptionId?: string;
+  subscriptionStatus?: 'created' | 'active' | 'pending' | 'halted' | 'cancelled' | 'completed' | 'expired' | null;
   subscriptionEndsAt?: Date | null;
 }
 

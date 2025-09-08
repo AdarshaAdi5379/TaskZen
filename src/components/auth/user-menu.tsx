@@ -19,12 +19,14 @@ import { Button } from "../ui/button";
 import { useTheme } from "next-themes";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
+import useRazorpay from "@/hooks/use-razorpay";
 
 export function UserMenu() {
   const { user, userProfile, signOut } = useAuth();
   const { setTheme } = useTheme();
   const { toast } = useToast();
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const razorpay = useRazorpay();
   
   const isPro = userProfile?.subscriptionStatus === 'active';
 
@@ -42,27 +44,86 @@ export function UserMenu() {
   const handleUpgrade = async () => {
     setIsRedirecting(true);
     try {
-      const res = await fetch('/api/stripe/checkout', {
+      const res = await fetch('/api/razorpay/create-subscription', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email: user.email, userId: user.uid }),
+        body: JSON.stringify({ userId: user.uid }),
       });
 
       if (!res.ok) {
-        throw new Error('Failed to create checkout session');
+        const error = await res.json();
+        throw new Error(error.message || 'Failed to create subscription');
       }
 
-      const { sessionId } = await res.json();
-      // Redirect to Stripe Checkout
-      window.location.href = `https://checkout.stripe.com/pay/${sessionId}`;
+      const { subscriptionId } = await res.json();
+      
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
+        subscription_id: subscriptionId,
+        name: "TaskZen Pro",
+        description: "Annual Subscription",
+        handler: async (response: any) => {
+          try {
+            const verifyRes = await fetch('/api/razorpay/verify-payment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_subscription_id: response.razorpay_subscription_id,
+                    razorpay_signature: response.razorpay_signature,
+                    userId: user.uid,
+                }),
+            });
+
+            if (!verifyRes.ok) {
+              const error = await verifyRes.json();
+              throw new Error(error.message || "Payment verification failed");
+            }
+            
+            toast({
+              title: "Success!",
+              description: "You are now a Pro member.",
+            });
+
+          } catch (error) {
+              const e = error as Error;
+              toast({ title: "Verification Failed", description: e.message, variant: 'destructive' });
+          } finally {
+            setIsRedirecting(false);
+          }
+        },
+        prefill: {
+            name: user.displayName || '',
+            email: user.email || '',
+        },
+        theme: {
+            color: "#64B5F6"
+        }
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+
+      rzp.on('payment.failed', function (response: any){
+        toast({
+            title: "Payment Failed",
+            description: response.error.description,
+            variant: "destructive",
+        });
+        setIsRedirecting(false);
+      });
+
 
     } catch (error) {
-      console.error("Stripe checkout error:", error);
+      console.error("Razorpay checkout error:", error);
+      const e = error as Error;
       toast({
         title: "Error",
-        description: "Could not redirect to checkout. Please try again.",
+        description: e.message || "Could not start checkout. Please try again.",
         variant: "destructive"
       });
       setIsRedirecting(false);
@@ -98,7 +159,7 @@ export function UserMenu() {
         ) : (
             <DropdownMenuItem onClick={handleUpgrade} disabled={isRedirecting}>
                 <Zap className="mr-2 h-4 w-4" />
-                <span>{isRedirecting ? "Redirecting..." : "Upgrade to Pro"}</span>
+                <span>{isRedirecting ? "Processing..." : "Upgrade to Pro"}</span>
             </DropdownMenuItem>
         )}
         <DropdownMenuSub>
