@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               displayName: user.displayName,
               photoURL: user.photoURL,
               createdAt: serverTimestamp(),
-              role: 'user', // Default role
+              role: user.email === 'adarshakk1234@gmail.com' ? 'admin' : 'user', // Set admin role for specific email
               status: 'active', // Default status
               subscriptionId: null,
               subscriptionStatus: null,
