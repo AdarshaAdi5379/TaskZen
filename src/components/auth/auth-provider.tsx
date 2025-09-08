@@ -79,7 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           role: 'user', // Default role
           status: 'active', // Default status
         };
-        await setDoc(userRef, newUserRef, { merge: true });
+        await setDoc(userRef, newUserProfile, { merge: true });
       }
       
     } catch (error: any) {
