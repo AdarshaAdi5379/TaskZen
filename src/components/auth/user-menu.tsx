@@ -7,14 +7,20 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "./auth-context";
-import { LogOut, User as UserIcon } from "lucide-react";
+import { LogOut, Palette } from "lucide-react";
 import { Button } from "../ui/button";
+import { useTheme } from "next-themes";
 
 export function UserMenu() {
   const { user, signOut } = useAuth();
+  const { setTheme } = useTheme();
 
   if (!user) return null;
   
@@ -46,6 +52,26 @@ export function UserMenu() {
             </p>
           </div>
         </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <Palette className="mr-2 h-4 w-4" />
+            <span>Theme</span>
+          </DropdownMenuSubTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuSubContent>
+              <DropdownMenuItem onClick={() => setTheme("theme-zen")}>
+                Zen
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("theme-twilight")}>
+                Twilight
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("theme-crimson")}>
+                Crimson
+              </DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuPortal>
+        </DropdownMenuSub>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={signOut}>
           <LogOut className="mr-2 h-4 w-4" />

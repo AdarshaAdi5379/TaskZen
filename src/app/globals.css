@@ -4,7 +4,7 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
+  :root, .theme-zen {
     --background: 210 20% 96.1%; /* #F0F4F8 */
     --foreground: 224 71.4% 4.1%;
     --card: 0 0% 100%;
@@ -40,7 +40,51 @@
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
-  .dark {
+  .theme-twilight {
+    --background: 240 10% 96%;
+    --foreground: 240 5% 20%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 5% 20%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 5% 20%;
+    --primary: 250 80% 70%;
+    --primary-foreground: 240 5% 98%;
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 240 5% 30%;
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 4% 50%;
+    --accent: 310 80% 75%;
+    --accent-foreground: 240 5% 20%;
+    --destructive: 0 70% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5% 90%;
+    --input: 240 5% 90%;
+    --ring: 250 80% 70%;
+  }
+
+  .theme-crimson {
+    --background: 10 30% 96%;
+    --foreground: 10 5% 20%;
+    --card: 0 0% 100%;
+    --card-foreground: 10 5% 20%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 10 5% 20%;
+    --primary: 0 80% 65%;
+    --primary-foreground: 10 5% 98%;
+    --secondary: 10 5% 96%;
+    --secondary-foreground: 10 5% 30%;
+    --muted: 10 5% 96%;
+    --muted-foreground: 10 4% 50%;
+    --accent: 30 90% 65%;
+    --accent-foreground: 10 5% 20%;
+    --destructive: 0 70% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 10 5% 90%;
+    --input: 10 5% 90%;
+    --ring: 0 80% 65%;
+  }
+
+  .dark.theme-zen {
     --background: 0 0% 20%; /* #333333 */
     --foreground: 210 20% 98%;
     --card: 224 20% 10%;
@@ -60,19 +104,50 @@
     --border: 215 28% 17%;
     --input: 215 28% 17%;
     --ring: 207 90% 68%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+  
+  .dark.theme-twilight {
+    --background: 250 10% 12%;
+    --foreground: 250 5% 95%;
+    --card: 250 10% 15%;
+    --card-foreground: 250 5% 95%;
+    --popover: 250 10% 15%;
+    --popover-foreground: 250 5% 95%;
+    --primary: 250 80% 70%;
+    --primary-foreground: 250 5% 10%;
+    --secondary: 250 10% 20%;
+    --secondary-foreground: 250 5% 95%;
+    --muted: 250 10% 20%;
+    --muted-foreground: 250 4% 60%;
+    --accent: 310 80% 75%;
+    --accent-foreground: 250 5% 95%;
+    --destructive: 0 60% 50%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 250 10% 25%;
+    --input: 250 10% 25%;
+    --ring: 250 80% 70%;
+  }
+
+  .dark.theme-crimson {
+    --background: 0 10% 12%;
+    --foreground: 0 5% 95%;
+    --card: 0 10% 15%;
+    --card-foreground: 0 5% 95%;
+    --popover: 0 10% 15%;
+    --popover-foreground: 0 5% 95%;
+    --primary: 0 80% 65%;
+    --primary-foreground: 0 5% 10%;
+    --secondary: 0 10% 20%;
+    --secondary-foreground: 0 5% 95%;
+    --muted: 0 10% 20%;
+    --muted-foreground: 0 4% 60%;
+    --accent: 30 90% 65%;
+    --accent-foreground: 0 5% 95%;
+    --destructive: 0 60% 50%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 10% 25%;
+    --input: 0 10% 25%;
+    --ring: 0 80% 65%;
   }
 }
 
@@ -82,7 +157,7 @@
   }
   body {
     @apply text-foreground;
-    background-image: linear-gradient(to bottom right, hsl(207, 90%, 92%), hsl(var(--background)));
+    background-image: linear-gradient(to bottom right, hsl(var(--primary) / 0.15), hsl(var(--background)));
     background-attachment: fixed;
   }
   .dark body {
