@@ -9,7 +9,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { getGoogleAccessToken } from '@genkit-ai/googleai';
+import { getGoogleAccessToken } from 'genkit/googleai';
 import { google } from 'googleapis';
 import type { Todo } from '@/components/todo/types';
 
@@ -77,7 +77,7 @@ const syncToCalendarFlow = ai.defineFlow(
                 calendarId: 'primary',
                 eventId: event.id,
                 requestBody: event,
-            }).catch(async (err) => {
+            }).catch(async (err: any) => {
                 if (err.code === 404) { // Not found, so insert it
                    await calendar.events.insert({
                         calendarId: 'primary',
