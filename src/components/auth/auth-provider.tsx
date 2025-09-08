@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { onAuthStateChanged, signInWithPopup, signOut as firebaseSignOut, type User, GoogleAuthProvider, getAuth } from 'firebase/auth';
-import { app, db } from '@/lib/firebase'; // Keep db, but getAuth will be handled differently
+import { app } from '@/lib/firebase'; // Keep app import
 import { doc, setDoc, onSnapshot, serverTimestamp, getDoc, getFirestore } from 'firebase/firestore';
 import type { AuthContextType, UserProfile } from './auth-context';
 import { AuthContext } from './auth-context';
@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const auth = getAuth(app);
+    const auth = getAuth(app); // Get auth instance inside useEffect
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       const unsubscribeProfile = handleUserProfile(currentUser);
@@ -53,8 +53,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = async () => {
     setLoading(true);
-    const auth = getAuth(app);
-    const firestore = getFirestore(app);
+    const auth = getAuth(app); // Get auth instance
+    const firestore = getFirestore(app); // get db instance
     const googleProvider = new GoogleAuthProvider();
     googleProvider.addScope('https://www.googleapis.com/auth/calendar.events');
     try {
@@ -92,7 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    const auth = getAuth(app);
+    const auth = getAuth(app); // Get auth instance
     try {
       await firebaseSignOut(auth);
     } catch (error) {
