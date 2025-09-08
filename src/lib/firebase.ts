@@ -12,8 +12,17 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase for SSR
-const app: FirebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const auth: Auth = getAuth(app);
-const db: Firestore = getFirestore(app);
+const getAppInstance = (): FirebaseApp => {
+    if (!getApps().length) {
+        return initializeApp(firebaseConfig);
+    }
+    return getApp();
+}
 
-export { app, auth, db };
+export const getFirebaseAuth = (): Auth => {
+    return getAuth(getAppInstance());
+}
+
+export const getFirebaseDb = (): Firestore => {
+    return getFirestore(getAppInstance());
+}

@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { getFirebaseDb } from "@/lib/firebase";
 import type { UserProfile } from "@/components/auth/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, Loader2 } from "lucide-react";
@@ -16,6 +16,7 @@ export function AdminPanel() {
   const { toast } = useToast();
 
   useEffect(() => {
+    const db = getFirebaseDb();
     const usersQuery = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
     
     const unsubscribe = onSnapshot(usersQuery, (snapshot) => {

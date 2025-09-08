@@ -9,7 +9,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/componen
 import { TaskZenIcon } from './taskzen-icon';
 import { Button } from '../ui/button';
 import { useAuth } from '@/components/auth/auth-context';
-import { db } from '@/lib/firebase';
+import { getFirebaseDb } from '@/lib/firebase';
 import { collection, query, where, getDocs, doc, setDoc, deleteDoc, writeBatch, onSnapshot, orderBy, Timestamp, addDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { HistoryView } from './history-view';
@@ -20,6 +20,7 @@ import { interpretTask } from '@/ai/flows/interpret-task-flow';
 import { QuickAddWidget } from './quick-add-widget';
 
 async function migrateUserTasks(userId: string, defaultProjectId: string) {
+    const db = getFirebaseDb();
     const oldTodosRef = collection(db, 'users', userId, 'todos');
     const oldTodosSnap = await getDocs(oldTodosRef);
     
@@ -43,6 +44,7 @@ async function migrateUserTasks(userId: string, defaultProjectId: string) {
 
 async function fetchProjectMembers(memberIds: string[]): Promise<ProjectMember[]> {
     if (memberIds.length === 0) return [];
+    const db = getFirebaseDb();
     const usersRef = collection(db, "users");
     const q = query(usersRef, where("uid", "in", memberIds));
     const querySnapshot = await getDocs(q);
@@ -66,6 +68,7 @@ export function TodoApp() {
     }
 
     setLoading(true);
+    const db = getFirebaseDb();
     const projectsQuery = query(collection(db, 'projects'), where('members', 'array-contains', user.uid));
     
     const unsubscribe = onSnapshot(projectsQuery, async (snapshot) => {
@@ -108,7 +111,7 @@ export function TodoApp() {
 
   useEffect(() => {
     if (!currentProjectId || !user) return;
-
+    const db = getFirebaseDb();
     const todosQuery = query(collection(db, 'projects', currentProjectId, 'tasks'), orderBy('createdAt', 'desc'));
     
     const unsubscribe = onSnapshot(todosQuery, (snapshot) => {
@@ -133,7 +136,7 @@ export function TodoApp() {
 
   const addTodo = async (text: string, deadline?: Date) => {
     if (!currentProjectId || !user) return;
-
+    const db = getFirebaseDb();
     try {
         let taskText = text;
         let taskDeadline = deadline;
@@ -165,6 +168,7 @@ export function TodoApp() {
 
   const toggleTodo = async (id: string) => {
     if (!currentProjectId) return;
+    const db = getFirebaseDb();
     const todoToToggle = todos.find(todo => todo.id === id);
     if (!todoToToggle) return;
 
@@ -184,6 +188,7 @@ export function TodoApp() {
 
   const deleteTodo = async (id: string) => {
     if (!currentProjectId) return;
+    const db = getFirebaseDb();
     try {
         await deleteDoc(doc(db, 'projects', currentProjectId, 'tasks', id));
     } catch (error) {
@@ -194,6 +199,7 @@ export function TodoApp() {
 
   const assignTask = async (id: string, userId: string) => {
     if (!currentProjectId) return;
+    const db = getFirebaseDb();
      try {
         await updateDoc(doc(db, 'projects', currentProjectId, 'tasks', id), { assignedTo: userId });
     } catch (error) {
@@ -204,6 +210,7 @@ export function TodoApp() {
 
   const createProject = async (projectName: string) => {
     if(!user) return;
+    const db = getFirebaseDb();
     try {
       const newProject = {
         name: projectName,
@@ -222,6 +229,7 @@ export function TodoApp() {
 
   const shareProject = async (email: string) => {
     if (!currentProjectId || !user) return;
+    const db = getFirebaseDb();
 
     if(email === user.email) {
       toast({ title: "You can't share a project with yourself.", variant: "destructive" });

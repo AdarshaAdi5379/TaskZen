@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { onAuthStateChanged, signInWithPopup, signOut as firebaseSignOut, type User, GoogleAuthProvider } from 'firebase/auth';
-import { auth, db } from '@/lib/firebase';
+import { getFirebaseAuth, getFirebaseDb } from '@/lib/firebase';
 import { doc, setDoc, onSnapshot, serverTimestamp, getDoc } from 'firebase/firestore';
 import type { AuthContextType, UserProfile } from './auth-context';
 import { AuthContext } from './auth-context';
@@ -17,6 +17,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const handleUserProfile = useCallback((user: User | null) => {
     if (user) {
+      const db = getFirebaseDb();
       const userRef = doc(db, 'users', user.uid);
       const unsubscribe = onSnapshot(userRef, (docSnap) => {
         if (docSnap.exists()) {
@@ -40,6 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    const auth = getFirebaseAuth();
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       const unsubscribeProfile = handleUserProfile(currentUser);
@@ -51,6 +53,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = async () => {
     setLoading(true);
+    const auth = getFirebaseAuth();
+    const db = getFirebaseDb();
     const googleProvider = new GoogleAuthProvider();
     // This scope is crucial for the calendar sync feature to work.
     googleProvider.addScope('https://www.googleapis.com/auth/calendar.events');
@@ -89,6 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    const auth = getFirebaseAuth();
     try {
       await firebaseSignOut(auth);
     } catch (error) {
