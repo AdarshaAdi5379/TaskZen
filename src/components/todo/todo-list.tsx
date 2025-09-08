@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from 'framer-motion';
-import type { Todo } from './types';
+import type { Todo, ProjectMember } from './types';
 import { TodoItem } from './todo-item';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2 } from 'lucide-react';
@@ -10,10 +10,12 @@ interface TodoListProps {
   todos: Todo[];
   onToggleTodo: (id: string) => void;
   onDeleteTodo: (id: string) => void;
+  onAssignTask: (id: string, userId: string) => void;
+  members: ProjectMember[];
   loading: boolean;
 }
 
-export function TodoList({ todos, onToggleTodo, onDeleteTodo, loading }: TodoListProps) {
+export function TodoList({ todos, onToggleTodo, onDeleteTodo, onAssignTask, members, loading }: TodoListProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full py-10">
@@ -44,7 +46,13 @@ export function TodoList({ todos, onToggleTodo, onDeleteTodo, loading }: TodoLis
               exit={{ opacity: 0, x: -20, transition: { duration: 0.2 } }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             >
-              <TodoItem todo={todo} onToggle={onToggleTodo} onDelete={onDeleteTodo} />
+              <TodoItem 
+                todo={todo} 
+                onToggle={onToggleTodo} 
+                onDelete={onDeleteTodo}
+                onAssign={onAssignTask}
+                members={members}
+              />
             </motion.li>
           ))}
         </AnimatePresence>

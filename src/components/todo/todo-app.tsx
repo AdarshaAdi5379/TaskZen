@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import type { Todo, Filter, Project } from './types';
+import type { Todo, Filter, Project, ProjectMember } from './types';
 import { TodoForm } from './todo-form';
 import { TodoList } from './todo-list';
 import { TodoFilters } from './todo-filters';
@@ -37,6 +37,14 @@ async function migrateUserTasks(userId: string, defaultProjectId: string) {
     }
 }
 
+async function fetchProjectMembers(memberIds: string[]): Promise<ProjectMember[]> {
+    if (memberIds.length === 0) return [];
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("uid", "in", memberIds));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => doc.data() as ProjectMember);
+}
+
 export function TodoApp() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -49,7 +57,6 @@ export function TodoApp() {
   useEffect(() => {
     if (!user) {
         setLoading(false);
-        // Handle local storage for logged-out users if needed
         return;
     }
 
@@ -60,7 +67,6 @@ export function TodoApp() {
         let userProjects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
         
         if (userProjects.length === 0) {
-            // Create a default project for the user
             const newProject = {
                 name: 'Personal',
                 ownerId: user.uid,
@@ -70,16 +76,20 @@ export function TodoApp() {
             const projectRef = await addDoc(collection(db, 'projects'), newProject);
             const newProjectWithId = { ...newProject, id: projectRef.id };
             userProjects.push(newProjectWithId);
-            
-            // Try to migrate old tasks
             await migrateUserTasks(user.uid, projectRef.id);
         }
         
-        userProjects.sort((a,b) => a.createdAt.getTime() - b.createdAt.getTime());
-        setProjects(userProjects);
+        // Fetch member info for all projects
+        const projectsWithMembers = await Promise.all(userProjects.map(async (p) => {
+            const membersInfo = await fetchProjectMembers(p.members);
+            return { ...p, membersInfo };
+        }));
+
+        projectsWithMembers.sort((a,b) => a.createdAt.getTime() - b.createdAt.getTime());
+        setProjects(projectsWithMembers);
         
-        if (!currentProjectId || !userProjects.some(p => p.id === currentProjectId)) {
-            setCurrentProjectId(userProjects[0].id);
+        if (!currentProjectId || !projectsWithMembers.some(p => p.id === currentProjectId)) {
+            setCurrentProjectId(projectsWithMembers[0].id);
         }
         setLoading(false);
     }, (error) => {
@@ -89,7 +99,7 @@ export function TodoApp() {
     });
 
     return unsubscribe;
-  }, [user, toast, currentProjectId]);
+  }, [user, toast]);
 
   useEffect(() => {
     if (!currentProjectId || !user) return;
@@ -147,7 +157,7 @@ export function TodoApp() {
     };
 
     try {
-        await setDoc(doc(db, 'projects', currentProjectId, 'tasks', id), updatedTodoData, { merge: true });
+        await updateDoc(doc(db, 'projects', currentProjectId, 'tasks', id), updatedTodoData);
     } catch (error) {
         console.error("Error toggling todo:", error);
         toast({ title: "Error", description: "Failed to update task.", variant: "destructive" });
@@ -163,6 +173,16 @@ export function TodoApp() {
         toast({ title: "Error", description: "Failed to delete task.", variant: "destructive" });
     }
   };
+
+  const assignTask = async (id: string, userId: string) => {
+    if (!currentProjectId) return;
+     try {
+        await updateDoc(doc(db, 'projects', currentProjectId, 'tasks', id), { assignedTo: userId });
+    } catch (error) {
+        console.error("Error assigning task:", error);
+        toast({ title: "Error", description: "Failed to assign task.", variant: "destructive" });
+    }
+  }
 
   const createProject = async (projectName: string) => {
     if(!user) return;
@@ -191,7 +211,6 @@ export function TodoApp() {
     }
 
     try {
-      // Find user by email
       const usersRef = collection(db, "users");
       const q = query(usersRef, where("email", "==", email));
       const querySnapshot = await getDocs(q);
@@ -204,7 +223,6 @@ export function TodoApp() {
       const userToShareWith = querySnapshot.docs[0].data();
       const projectRef = doc(db, 'projects', currentProjectId);
 
-      // Add user to project members
       await updateDoc(projectRef, {
         members: arrayUnion(userToShareWith.uid)
       });
@@ -261,7 +279,14 @@ export function TodoApp() {
           { filter === 'history' ? (
             <HistoryView completedTodos={filteredTodos.filter(t => t.completed)} />
           ) : (
-            <TodoList todos={filteredTodos} onToggleTodo={toggleTodo} onDeleteTodo={deleteTodo} loading={loading} />
+            <TodoList 
+              todos={filteredTodos} 
+              onToggleTodo={toggleTodo} 
+              onDeleteTodo={deleteTodo} 
+              onAssignTask={assignTask}
+              members={currentProject?.membersInfo || []}
+              loading={loading}
+            />
           )}
         </div>
       </CardContent>
