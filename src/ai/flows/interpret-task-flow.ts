@@ -3,26 +3,11 @@
  * @fileOverview A Genkit flow for interpreting natural language to create a task.
  *
  * - interpretTask - A function that takes a natural language string and returns a structured task object.
- * - InterpretTaskInput - The input type for the interpretTask function.
- * - InterpretTaskOutput - The return type for the interpretTask function.
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'zod';
+import { InterpretTaskInputSchema, InterpretTaskOutputSchema, type InterpretTaskInput, type InterpretTaskOutput } from '@/ai/schemas';
 
-export const InterpretTaskInputSchema = z.object({
-  text: z.string().describe('The natural language text for the task.'),
-});
-export type InterpretTaskInput = z.infer<typeof InterpretTaskInputSchema>;
-
-export const InterpretTaskOutputSchema = z.object({
-  text: z.string().describe('The extracted task description.'),
-  deadline: z
-    .string()
-    .optional()
-    .describe('The deadline in ISO 8601 format if present, otherwise undefined.'),
-});
-export type InterpretTaskOutput = z.infer<typeof InterpretTaskOutputSchema>;
 
 export async function interpretTask(
   input: InterpretTaskInput

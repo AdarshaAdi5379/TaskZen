@@ -3,31 +3,13 @@
  * @fileOverview A Genkit flow for synchronizing tasks with Google Calendar.
  *
  * - syncToCalendar - A function that takes a list of tasks and creates events in Google Calendar.
- * - CalendarSyncInput - The input type for the syncToCale   ndar function.
- * - CalendarSyncOutput - The return type for the syncToCalendar function.
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'zod';
-import { getGoogleAccessToken } from '@genkit-ai/googleai';
+import { googleAI } from '@genkit-ai/googleai';
 import { google } from 'googleapis';
-import type { Todo } from '@/components/todo/types';
+import { CalendarSyncInputSchema, CalendarSyncOutputSchema, type CalendarSyncInput, type CalendarSyncOutput } from '@/ai/schemas';
 
-export const CalendarSyncInputSchema = z.array(
-  z.object({
-    id: z.string(),
-    text: z.string(),
-    completed: z.boolean(),
-    deadline: z.date().optional(),
-    projectId: z.string(),
-  })
-);
-export type CalendarSyncInput = z.infer<typeof CalendarSyncInputSchema>;
-
-export const CalendarSyncOutputSchema = z.object({
-  syncedEvents: z.number(),
-});
-export type CalendarSyncOutput = z.infer<typeof CalendarSyncOutputSchema>;
 
 export async function syncToCalendar(
   input: CalendarSyncInput
@@ -42,7 +24,7 @@ const syncToCalendarFlow = ai.defineFlow(
     outputSchema: CalendarSyncOutputSchema,
   },
   async (tasks) => {
-    const accessToken = await getGoogleAccessToken();
+    const accessToken = await googleAI.getGoogleAccessToken();
     if (!accessToken) {
       throw new Error('Not authenticated with Google.');
     }
