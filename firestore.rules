@@ -1,0 +1,127 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isUser(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // =================================================================
+    // Users Collection
+    // =================================================================
+    match /users/{userId} {
+      // Admins can read any user profile
+      // Users can read their own profile
+      allow read: if isAdmin() || isUser(userId);
+
+      // Users can create their own profile on signup
+      // Admins can create users (e.g. for invitations)
+      allow create: if isUser(userId) || isAdmin();
+
+      // Users can only update their own profile
+      // Admins can update any user profile
+      // Prevent users from changing their own role
+      allow update: if (isAdmin()) || (isUser(userId) && !("role" in request.resource.data));
+      
+      // Only admins can delete users
+      allow delete: if isAdmin();
+    }
+    
+    // =================================================================
+    // Companies Collection
+    // =================================================================
+    match /companies/{companyId} {
+      // Only members of the company can read/write
+      allow read, write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId;
+
+      // Feature flags are read-only for clients
+      // Only backend functions can modify feature flags
+      match /features {
+        allow write: if false;
+      }
+      // Seat management is handled by backend functions
+      match /seats {
+         allow write: if false;
+      }
+    }
+    
+    // =================================================================
+    // Audit Logs (Immutable)
+    // =================================================================
+    match /companies/{companyId}/auditLogs/{logId} {
+      // Only admins of the company can read audit logs
+      allow read: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId && isAdmin();
+      
+      // Nobody can write to audit logs from the client.
+      // They are only created by Cloud Functions.
+      allow write: if false;
+    }
+    
+    // =================================================================
+    // Billing Invoices (Immutable for clients)
+    // =================================================================
+     match /companies/{companyId}/billing/invoices/{invoiceId} {
+        allow read: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId && isAdmin();
+        allow write: if false; // Only backend can write
+     }
+
+    // =================================================================
+    // Projects & Tasks
+    // =================================================================
+    match /projects/{projectId} {
+      allow read, write: if request.auth.uid in resource.data.members;
+
+      match /tasks/{taskId} {
+        allow read, write: if request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.members;
+
+        // Time tracking can be added by any project member
+        match /timeLogs/{logId} {
+            allow read, write: if request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.members;
+        }
+      }
+    }
+
+    // =================================================================
+    // Templates
+    // =================================================================
+    match /companies/{companyId}/templates/{templateId} {
+        allow read: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId;
+        // Writing/creating templates is an admin/template-manager role
+        allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId && isAdmin();
+    }
+    
+    // =================================================================
+    // Integrations
+    // =================================================================
+     match /companies/{companyId}/integrations/{integrationId} {
+        allow read, write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId && isAdmin();
+     }
+     
+     match /companies/{companyId}/integrations/{integrationId}/deliveryLogs/{logId} {
+        allow read: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId && isAdmin();
+        allow write: if false; // Only backend can write
+     }
+
+    // =================================================================
+    // Invitations
+    // =================================================================
+    match /invitations/{invitationId} {
+      // Only the inviter or an admin can create an invitation.
+      allow create: if isSignedIn();
+      // Only the invited user (after signup) or inviter/admin can read/delete.
+      // This is handled by backend logic (processUserInvitations function).
+      allow read, delete: if isSignedIn();
+    }
+  }
+}

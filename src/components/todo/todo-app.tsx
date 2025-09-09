@@ -134,7 +134,11 @@ export function TodoApp() {
         return;
     };
     const db = getFirebaseDb();
-    const todosQuery = query(collection(db, 'projects', currentProjectId, 'tasks'), orderBy('createdAt', 'desc'));
+    const todosQuery = query(
+        collection(db, 'projects', currentProjectId, 'tasks'), 
+        where('deletedAt', '==', null), // Exclude soft-deleted tasks
+        orderBy('createdAt', 'desc')
+    );
     
     const unsubscribe = onSnapshot(todosQuery, (snapshot) => {
         const todosData = snapshot.docs.map(doc => {
@@ -176,6 +180,7 @@ export function TodoApp() {
           completed: false,
           createdAt: new Date(),
           projectId: currentProjectId,
+          deletedAt: null, // For soft-delete
         };
 
         if (taskDeadline) {
@@ -217,10 +222,14 @@ export function TodoApp() {
   };
 
   const deleteTodo = async (id: string) => {
-    if (!currentProjectId) return;
+    if (!currentProjectId || !user) return;
     try {
         const db = getFirebaseDb();
-        await deleteDoc(doc(db, 'projects', currentProjectId, 'tasks', id));
+        // Soft delete the task
+        await updateDoc(doc(db, 'projects', currentProjectId, 'tasks', id), {
+            deletedAt: new Date(),
+            deletedBy: user.uid,
+        });
     } catch (error) {
         console.error("Error deleting todo:", error);
         toast({ title: "Error", description: "Failed to delete task.", variant: "destructive" });
