@@ -16,6 +16,16 @@ import {
   DialogClose,
 } from "@/components/ui/dialog"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+
+const getInitials = (name: string | null | undefined) => {
+    if (!name) return 'U';
+    const names = name.split(' ');
+    if (names.length > 1) {
+      return `${names[0][0]}${names[names.length - 1][0]}`;
+    }
+    return name[0];
+}
 
 
 interface ProjectSelectorProps {
@@ -81,9 +91,35 @@ export function ProjectSelector({ projects, currentProject, onSelectProject, onC
                     <DialogHeader>
                         <DialogTitle>Share "{currentProject?.name}"</DialogTitle>
                         <DialogDescription>
-                            Enter the email of the user you want to share this project with.
+                            Enter the email of the user you want to share this project with. They will get access to all tasks within this project.
                         </DialogDescription>
                     </DialogHeader>
+
+                     {currentProject?.membersInfo && currentProject.membersInfo.length > 0 && (
+                        <div className="mt-4">
+                            <h4 className="text-sm font-medium text-muted-foreground mb-2">Project Members</h4>
+                            <div className="flex flex-wrap gap-2">
+                                {currentProject.membersInfo.map(member => (
+                                     <TooltipProvider key={member.uid}>
+                                        <Tooltip>
+                                            <TooltipTrigger>
+                                                <Avatar>
+                                                    <AvatarImage src={member.photoURL || ''} alt={member.displayName || ''} />
+                                                    <AvatarFallback>{getInitials(member.displayName)}</AvatarFallback>
+                                                </Avatar>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>{member.displayName}</p>
+                                                <p className="text-xs text-muted-foreground">{member.email}</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                     </TooltipProvider>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+
                     <div className="grid gap-4 py-4">
                         <Input 
                             placeholder="user@example.com"

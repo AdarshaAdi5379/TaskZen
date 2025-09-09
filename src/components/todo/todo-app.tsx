@@ -49,7 +49,15 @@ async function fetchProjectMembers(memberIds: string[]): Promise<ProjectMember[]
     const usersRef = collection(db, "users");
     const q = query(usersRef, where("uid", "in", memberIds));
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => doc.data() as ProjectMember);
+    return querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            uid: data.uid,
+            displayName: data.displayName,
+            photoURL: data.photoURL,
+            email: data.email,
+        }
+    });
 }
 
 export function TodoApp() {
@@ -65,12 +73,15 @@ export function TodoApp() {
   useEffect(() => {
     if (!user) {
         setLoading(false);
+        setProjects([]);
+        setTodos([]);
+        setCurrentProjectId(null);
         return;
     }
 
     setLoading(true);
     const db = getFirebaseDb();
-    const projectsQuery = query(collection(db, 'projects'), where('members', 'array-contains', user.uid));
+    const projectsQuery = query(collection(db, 'projects'), where('members', 'array-contains', user.uid), orderBy('createdAt', 'asc'));
     
     const unsubscribe = onSnapshot(projectsQuery, async (snapshot) => {
         let userProjects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
@@ -82,23 +93,28 @@ export function TodoApp() {
                 members: [user.uid],
                 createdAt: new Date(),
             };
-            const projectRef = await addDoc(collection(db, 'projects'), newProject);
-            const newProjectWithId = { ...newProject, id: projectRef.id };
-            userProjects.push(newProjectWithId);
-            await migrateUserTasks(user.uid, projectRef.id);
+            try {
+                const projectRef = await addDoc(collection(db, 'projects'), newProject);
+                const newProjectWithId = { ...newProject, id: projectRef.id };
+                userProjects.push(newProjectWithId);
+                await migrateUserTasks(user.uid, projectRef.id);
+            } catch (error) {
+                console.error("Error creating initial project:", error);
+                toast({ title: "Error", description: "Could not create your initial project.", variant: "destructive" });
+                setLoading(false);
+                return;
+            }
         }
         
-        // Fetch member info for all projects
         const projectsWithMembers = await Promise.all(userProjects.map(async (p) => {
             const membersInfo = await fetchProjectMembers(p.members);
             return { ...p, membersInfo };
         }));
 
-        projectsWithMembers.sort((a,b) => a.createdAt.getTime() - b.createdAt.getTime());
         setProjects(projectsWithMembers);
         
         if (!currentProjectId || !projectsWithMembers.some(p => p.id === currentProjectId)) {
-            setCurrentProjectId(projectsWithMembers[0].id);
+            setCurrentProjectId(projectsWithMembers[0]?.id || null);
         }
         setLoading(false);
     }, (error) => {
@@ -111,7 +127,10 @@ export function TodoApp() {
   }, [user, toast]);
 
   useEffect(() => {
-    if (!currentProjectId || !user) return;
+    if (!currentProjectId || !user) {
+        setTodos([]);
+        return;
+    };
     const db = getFirebaseDb();
     const todosQuery = query(collection(db, 'projects', currentProjectId, 'tasks'), orderBy('createdAt', 'desc'));
     
@@ -219,6 +238,8 @@ export function TodoApp() {
         createdAt: new Date(),
       };
       const projectRef = await addDoc(collection(db, 'projects'), newProject);
+      // The onSnapshot listener will automatically update the projects list.
+      // We just need to switch to the new project.
       setCurrentProjectId(projectRef.id);
       toast({title: "Success", description: `Project "${projectName}" created.`});
     } catch (error) {
@@ -290,7 +311,7 @@ export function TodoApp() {
       case 'history':
         return sortedTodos.filter(todo => todo.completed);
       default:
-        return sortedTodos;
+        return sortedTodos.filter(todo => !todo.completed); // Default to showing pending tasks
     }
   }, [todos, filter, currentProjectId]);
   
@@ -322,7 +343,7 @@ export function TodoApp() {
           
           <div className="mt-4 min-h-[24rem]">
             { filter === 'history' ? (
-              <HistoryView completedTodos={filteredTodos.filter(t => t.completed)} />
+              <HistoryView completedTodos={todos.filter(t => t.projectId === currentProjectId && t.completed)} />
             ) : (
               <TodoList 
                 todos={filteredTodos} 
