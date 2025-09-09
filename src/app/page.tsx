@@ -1,12 +1,12 @@
+
 "use client";
 
 import { TodoApp } from "@/components/todo/todo-app";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/components/auth/auth-context";
 import { Login } from "@/components/auth/login";
-import { UserMenu } from "@/components/auth/user-menu";
 import { Loader2 } from "lucide-react";
 import { AdminPanel } from "@/components/admin/admin-panel";
+import { Sidebar, SidebarInset, SidebarProvider } from "@/components/layout/sidebar";
 
 export default function Home() {
   const { user, isAdmin, loading } = useAuth();
@@ -20,24 +20,26 @@ export default function Home() {
       );
     }
     if (!user) {
-      return <Login />;
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+            <Login />
+        </div>
+      )
     }
-    if (isAdmin) {
-      return <AdminPanel />;
-    }
-    return <TodoApp />;
+    
+    return (
+        <SidebarProvider>
+            <Sidebar />
+            <SidebarInset>
+                {isAdmin ? <AdminPanel /> : <TodoApp />}
+            </SidebarInset>
+        </SidebarProvider>
+    );
   };
 
   return (
-    <>
-      <div className="relative flex min-h-screen flex-col items-center justify-start sm:justify-center p-4 sm:p-6">
-        <div className="absolute top-4 right-4 flex items-center gap-2">
-          <ThemeToggle />
-          {user && <UserMenu />}
-        </div>
-        
-        {renderContent()}
-      </div>
-    </>
+    <div className="relative min-h-screen flex-col">
+       {renderContent()}
+    </div>
   );
 }
