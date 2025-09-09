@@ -24,6 +24,15 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  webpack: (config) => {
+    config.externals.push({
+      'firebase': 'firebase',
+      '@firebase/app': '@firebase/app',
+      '@firebase/auth': '@firebase/auth',
+      '@firebase/firestore': '@firebase/firestore',
+    });
+    return config;
+  }
 };
 
 export default nextConfig;
