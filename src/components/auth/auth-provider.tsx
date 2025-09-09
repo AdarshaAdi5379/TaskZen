@@ -8,6 +8,7 @@ import { doc, setDoc, onSnapshot, serverTimestamp, getDoc } from 'firebase/fires
 import type { AuthContextType, UserProfile } from './auth-context';
 import { AuthContext } from './auth-context';
 import { useToast } from '@/hooks/use-toast';
+import { processUserInvitations } from '@/lib/invitations';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -80,6 +81,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           status: 'active', // Default status
         };
         await setDoc(userRef, newUserProfile, { merge: true });
+      }
+      
+      // Process any pending invitations for this user
+      if(user.email) {
+          await processUserInvitations(user.uid, user.email);
       }
       
     } catch (error: any) {

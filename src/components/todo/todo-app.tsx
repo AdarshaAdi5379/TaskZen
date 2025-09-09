@@ -19,6 +19,7 @@ import { CalendarSync } from 'lucide-react';
 import { syncToCalendar } from '@/ai/flows/calendar-sync-flow';
 import { interpretTask } from '@/ai/flows/interpret-task-flow';
 import { QuickAddWidget } from './quick-add-widget';
+import { createInvitation } from '@/lib/invitations';
 
 async function migrateUserTasks(userId: string, defaultProjectId: string) {
     const db = getFirebaseDb();
@@ -124,7 +125,7 @@ export function TodoApp() {
     });
 
     return unsubscribe;
-  }, [user, toast]);
+  }, [user, toast, currentProjectId]);
 
   useEffect(() => {
     if (!currentProjectId || !user) {
@@ -268,28 +269,12 @@ export function TodoApp() {
     }
 
     try {
-      const db = getFirebaseDb();
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, where("email", "==", email));
-      const querySnapshot = await getDocs(q);
-
-      if (querySnapshot.empty) {
-        toast({ title: "Error", description: "User with that email not found.", variant: "destructive" });
-        return;
-      }
-
-      const userToShareWith = querySnapshot.docs[0].data();
-      const projectRef = doc(db, 'projects', currentProjectId);
-
-      await updateDoc(projectRef, {
-        members: arrayUnion(userToShareWith.uid)
-      });
-      
-      toast({ title: "Success", description: `Project shared with ${email}.` });
-
+      await createInvitation(currentProjectId, user.uid, email);
+      toast({ title: "Success", description: `Invitation sent to ${email}. They will get access once they log in.` });
     } catch (error) {
       console.error("Error sharing project:", error);
-      toast({ title: "Error", description: "Failed to share project.", variant: "destructive" });
+      const e = error as Error;
+      toast({ title: "Error", description: e.message || "Failed to share project.", variant: "destructive" });
     }
   }
 
