@@ -1,86 +1,103 @@
-
 rules_version = '2';
+
+// Helper functions to reduce duplication
+function isSignedIn() {
+  return request.auth != null;
+}
+
+function isUser(userId) {
+  return isSignedIn() && request.auth.uid == userId;
+}
+
+function userHasCompany(companyId) {
+    return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId;
+}
+
+function isCompanyAdmin(companyId) {
+    return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' && userHasCompany(companyId);
+}
+
+function isProjectMember(projectId) {
+    return isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.members;
+}
+
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper function to check if a user is an admin
-    function isAdmin(userId) {
-      return exists(/databases/$(database)/documents/users/$(userId)) &&
-             get(/databases/$(database)/documents/users/$(userId)).data.role == 'admin';
-    }
-
-    // Helper function to check if a user is a member of a specific project
-    function isProjectMember(projectId, userId) {
-        return userId in get(/databases/$(database)/documents/projects/$(projectId)).data.members;
-    }
-
-    // Users collection can be read by anyone, but only the user themselves can write to their own document.
-    // Certain fields like 'role' should only be writable by an admin (handled via Cloud Functions).
+  
+    // Users can only read/update their own profile.
+    // Roles can only be changed by an admin via Cloud Functions.
     match /users/{userId} {
-      allow read;
-      allow write: if request.auth.uid == userId;
-      // Prevent users from changing their own role or status
-      allow update: if request.auth.uid == userId
-                    && !('role' in request.resource.data)
-                    // Add other protected fields here
-                    && !('status' in request.resource.data);
-    }
-    
-    // Invitations can be created by authenticated users. Only the invited user can process it (via Cloud Function).
-    match /invitations/{invitationId} {
-        allow read, write: if request.auth != null;
-    }
-    
-    // Projects can be read by their members. Write access is more granular.
-    match /projects/{projectId} {
-      allow read: if isProjectMember(projectId, request.auth.uid);
-      allow create: if request.auth.uid == request.resource.data.ownerId;
-      allow update: if isProjectMember(projectId, request.auth.uid);
-    
-      // Tasks subcollection
-      match /tasks/{taskId} {
-        allow read, write: if isProjectMember(projectId, request.auth.uid);
+      allow read, update: if isUser(userId);
+      allow create: if isSignedIn();
       
-        // Time logs can be managed by project members
-        match /timeLogs/{timeLogId} {
-            allow read, write: if isProjectMember(projectId, request.auth.uid);
-        }
-      }
+      // Prevent users from changing their own role or companyId
+      allow update: if request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['displayName', 'photoURL', 'subscriptionStatus', 'razorpayPlanId', 'razorpaySubscriptionId', 'razorpayPaymentId', 'razorpaySignature', 'subscriptionEndsAt', 'status']);
     }
-    
-    // Company-level data has stricter rules
+
+    // Invitations can be created by any authenticated user.
+    // They can only be read/updated/deleted by the system (Cloud Functions)
+    match /invitations/{invitationId} {
+        allow create: if isSignedIn();
+        allow read, update, delete: if false; // Server-side only
+    }
+
+    // Companies can be read by their members. Write access is restricted.
     match /companies/{companyId} {
-        // Allow read only if the user's custom claim matches the companyId
-        allow read: if request.auth.token.companyId == companyId;
-        
-        // Templates can be read by company members, but written only by admins
-        match /templates/{templateId} {
-            allow read: if request.auth.token.companyId == companyId;
-            allow write: if request.auth.token.companyId == companyId && isAdmin(request.auth.uid);
-        }
+        allow get: if isCompanyAdmin(companyId);
+        allow list: if false; // Don't allow listing all companies
+        allow create, update, delete: if isCompanyAdmin(companyId);
 
-        // Integrations, Audit Logs, Billing are server-only
-        match /integrations/{integrationId} {
-          allow read, write: if false; // Server-side only
-           match /deliveryLogs/{logId} {
-               allow read, write: if false;
-           }
-        }
-        
+        // Audit logs are immutable and can only be created by the server
         match /auditLogs/{logId} {
-            allow read: if request.auth.token.companyId == companyId && isAdmin(request.auth.uid);
-            allow write: if false; // Server-side only, immutable
+            allow read: if isCompanyAdmin(companyId);
+            allow write: if false; // Only server can write
         }
         
+        // Billing info is managed by the server
         match /billing/{docId} {
-            allow read, write: if false; // Server-side only
+            allow read: if isCompanyAdmin(companyId);
+            allow write: if false; // Only server can write
         }
 
-        match /metrics/{metricId} {
-            allow read: if request.auth.token.companyId == companyId;
-            allow write: if false; // Server-side only
+        // Integrations can be managed by company admins
+        match /integrations/{integrationId} {
+            allow read, write, delete: if isCompanyAdmin(companyId);
+            
+            // Delivery logs are server-written
+            match /deliveryLogs/{logId} {
+                allow read: if isCompanyAdmin(companyId);
+                allow write: if false;
+            }
         }
+        
+        // Metrics are server-written
+        match /metrics/{metricId} {
+             allow read: if isCompanyAdmin(companyId);
+             allow write: if false;
+        }
+        
+        // Templates can be managed by company admins
+        match /templates/{templateId} {
+            allow read, write, delete: if isCompanyAdmin(companyId);
+        }
+    }
+
+    // Projects can be managed by their members.
+    match /projects/{projectId} {
+      allow read, update, delete: if isProjectMember(projectId);
+      allow create: if isSignedIn();
+
+      // Tasks can be managed by project members.
+      match /tasks/{taskId} {
+        allow read, write, delete: if isProjectMember(projectId);
+      }
+      
+      // Time logs can be managed by project members
+      match /tasks/{taskId}/timeLogs/{logId} {
+          allow read, write, delete: if isProjectMember(projectId);
+      }
     }
   }
 }
