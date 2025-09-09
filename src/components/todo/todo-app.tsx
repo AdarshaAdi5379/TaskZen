@@ -125,7 +125,7 @@ export function TodoApp() {
     });
 
     return unsubscribe;
-  }, [user, toast, currentProjectId]);
+  }, [user, toast]);
 
   useEffect(() => {
     if (!currentProjectId || !user) {
@@ -202,8 +202,6 @@ export function TodoApp() {
     if (isCompleted) {
         updatedTodoData.completedAt = new Date();
     } else {
-        // Firestore deletes fields when set to undefined. 
-        // This is what we want if a task is un-completed.
         updatedTodoData.completedAt = undefined;
     }
 
