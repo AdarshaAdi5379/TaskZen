@@ -30,7 +30,7 @@ export type Project = {
   members: string[];
   createdAt: Date;
   membersInfo?: ProjectMember[];
-  companyId: string; // Link to the parent company
+  companyId?: string; // Link to the parent company
 }
 
 export type Filter = "all" | "pending" | "completed" | "history";
