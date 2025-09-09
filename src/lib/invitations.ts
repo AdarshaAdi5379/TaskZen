@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview This file contains utility functions for managing project invitations.
  */
@@ -11,7 +12,10 @@ import {
     doc, 
     writeBatch,
     addDoc,
-    serverTimestamp
+    serverTimestamp,
+    updateDoc,
+    arrayUnion,
+    getDoc,
 } from 'firebase/firestore';
 
 /**
@@ -22,18 +26,19 @@ import {
  */
 export async function createInvitation(projectId: string, inviterId: string, inviteeEmail: string): Promise<void> {
     const db = getFirebaseDb();
+    const inviteeEmailLower = inviteeEmail.toLowerCase();
 
     // Check if user is already a member
     const projectRef = doc(db, 'projects', projectId);
-    const projectSnap = await getDocs(query(collection(db, 'projects'), where('__name__', '==', projectId)));
+    const projectSnap = await getDoc(projectRef);
     
-    if (!projectSnap.empty) {
-        const projectData = projectSnap.docs[0].data();
+    if (projectSnap.exists()) {
+        const projectData = projectSnap.data();
         const members = projectData.members || [];
         
         // Check if the user is already in the members list by email
         const usersRef = collection(db, 'users');
-        const q = query(usersRef, where('email', '==', inviteeEmail));
+        const q = query(usersRef, where('email', '==', inviteeEmailLower));
         const userQuerySnapshot = await getDocs(q);
 
         if (!userQuerySnapshot.empty) {
@@ -49,7 +54,7 @@ export async function createInvitation(projectId: string, inviterId: string, inv
     const invitationsRef = collection(db, 'invitations');
     const existingInviteQuery = query(invitationsRef, 
         where('projectId', '==', projectId), 
-        where('inviteeEmail', '==', inviteeEmail)
+        where('inviteeEmail', '==', inviteeEmailLower)
     );
     const existingInviteSnap = await getDocs(existingInviteQuery);
 
@@ -60,7 +65,7 @@ export async function createInvitation(projectId: string, inviterId: string, inv
     await addDoc(invitationsRef, {
         projectId,
         inviterId,
-        inviteeEmail: inviteeEmail.toLowerCase(),
+        inviteeEmail: inviteeEmailLower,
         status: 'pending',
         createdAt: serverTimestamp(),
     });
@@ -73,6 +78,7 @@ export async function createInvitation(projectId: string, inviterId: string, inv
  * @param userEmail - The email of the newly logged-in user.
  */
 export async function processUserInvitations(userId: string, userEmail: string): Promise<void> {
+    if (!userEmail) return;
     const db = getFirebaseDb();
     const invitationsRef = collection(db, 'invitations');
     const q = query(invitationsRef, where('inviteeEmail', '==', userEmail.toLowerCase()), where('status', '==', 'pending'));
@@ -91,7 +97,7 @@ export async function processUserInvitations(userId: string, userEmail: string):
         // Add user to the project's members array
         const projectRef = doc(db, 'projects', projectId);
         batch.update(projectRef, {
-            members: [...(invitation.members || []), userId]
+            members: arrayUnion(userId)
         });
 
         // Delete the invitation

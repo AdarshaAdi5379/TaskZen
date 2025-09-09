@@ -11,7 +11,7 @@ import { TaskZenIcon } from './taskzen-icon';
 import { Button } from '../ui/button';
 import { useAuth } from '@/components/auth/auth-context';
 import { getFirebaseDb } from '@/lib/firebase';
-import { collection, query, where, getDocs, doc, setDoc, deleteDoc, writeBatch, onSnapshot, orderBy, Timestamp, addDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, setDoc, deleteDoc, writeBatch, onSnapshot, orderBy, Timestamp, addDoc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { HistoryView } from './history-view';
 import { ProjectSelector } from './project-selector';
