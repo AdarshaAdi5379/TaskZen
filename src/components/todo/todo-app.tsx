@@ -169,15 +169,19 @@ export function TodoApp() {
             }
         }
         
-        const newTodo: Omit<Todo, 'id'> = {
+        const newTodoData: Omit<Todo, 'id'> = {
           text: taskText,
           completed: false,
           createdAt: new Date(),
-          deadline: taskDeadline,
           projectId: currentProjectId,
         };
+
+        if (taskDeadline) {
+            newTodoData.deadline = taskDeadline;
+        }
+
         const db = getFirebaseDb();
-        await addDoc(collection(db, 'projects', currentProjectId, 'tasks'), newTodo);
+        await addDoc(collection(db, 'projects', currentProjectId, 'tasks'), newTodoData);
 
     } catch (error) {
         console.error("Error adding todo:", error);
@@ -191,10 +195,17 @@ export function TodoApp() {
     if (!todoToToggle) return;
 
     const isCompleted = !todoToToggle.completed;
-    const updatedTodoData = { 
+    const updatedTodoData: Partial<Todo> = { 
       completed: isCompleted,
-      completedAt: isCompleted ? new Date() : undefined
     };
+    if (isCompleted) {
+        updatedTodoData.completedAt = new Date();
+    } else {
+        // Firestore deletes fields when set to undefined. 
+        // This is what we want if a task is un-completed.
+        updatedTodoData.completedAt = undefined;
+    }
+
 
     try {
         const db = getFirebaseDb();
