@@ -1,127 +1,97 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isUser(userId) {
-      return request.auth.uid == userId;
-    }
     
-    function isAdmin() {
-        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    // Default deny all reads and writes
+    match /{document=**} {
+      allow read, write: if false;
     }
 
-    // =================================================================
-    // Users Collection
-    // =================================================================
+    // Users collection:
+    // - Authenticated users can read their own profile.
+    // - Authenticated users can create their own profile.
+    // - Only the user or an admin can update their profile.
     match /users/{userId} {
-      // Admins can read any user profile
-      // Users can read their own profile
-      allow read: if isAdmin() || isUser(userId);
-
-      // Users can create their own profile on signup
-      // Admins can create users (e.g. for invitations)
-      allow create: if isUser(userId) || isAdmin();
-
-      // Users can only update their own profile
-      // Admins can update any user profile
-      // Prevent users from changing their own role
-      allow update: if (isAdmin()) || (isUser(userId) && !("role" in request.resource.data));
-      
-      // Only admins can delete users
-      allow delete: if isAdmin();
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      // Allow updates by the user or an admin. Admins are identified by a custom claim.
+      allow update: if request.auth != null && (request.auth.uid == userId || request.auth.token.admin == true);
     }
     
-    // =================================================================
-    // Companies Collection
-    // =================================================================
-    match /companies/{companyId} {
-      // Only members of the company can read/write
-      allow read, write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId;
-
-      // Feature flags are read-only for clients
-      // Only backend functions can modify feature flags
-      match /features {
-        allow write: if false;
-      }
-      // Seat management is handled by backend functions
-      match /seats {
-         allow write: if false;
-      }
+    // Invitations collection:
+    // - Allow creating an invitation if the user is a member of the project they are inviting someone to.
+    // - Allow reading an invitation if the invitee's email matches the authenticated user's email.
+    // - Invitations are deleted by a Cloud Function, not by clients.
+    match /invitations/{invitationId} {
+        allow create: if request.auth != null && get(/databases/$(database)/documents/projects/$(request.resource.data.projectId)).data.members.hasAny([request.auth.uid]);
+        allow read: if request.auth != null && request.resource.data.inviteeEmail == request.auth.token.email;
+        allow delete: if false; // Deletion is handled by Cloud Functions.
+        allow update: if false;
     }
-    
-    // =================================================================
-    // Audit Logs (Immutable)
-    // =================================================================
-    match /companies/{companyId}/auditLogs/{logId} {
-      // Only admins of the company can read audit logs
-      allow read: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId && isAdmin();
-      
-      // Nobody can write to audit logs from the client.
-      // They are only created by Cloud Functions.
-      allow write: if false;
-    }
-    
-    // =================================================================
-    // Billing Invoices (Immutable for clients)
-    // =================================================================
-     match /companies/{companyId}/billing/invoices/{invoiceId} {
-        allow read: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId && isAdmin();
-        allow write: if false; // Only backend can write
-     }
 
-    // =================================================================
-    // Projects & Tasks
-    // =================================================================
+    // Projects collection:
+    // - Allow read/write if the user is in the 'members' array of the project.
+    // - Only the owner can delete a project.
     match /projects/{projectId} {
-      allow read, write: if request.auth.uid in resource.data.members;
+      allow read: if request.auth != null && resource.data.members.hasAny([request.auth.uid]);
+      allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.members.hasAny([request.auth.uid]);
+      allow delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
 
+      // Tasks subcollection:
+      // - Inherit project membership for read/write access.
       match /tasks/{taskId} {
-        allow read, write: if request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.members;
-
-        // Time tracking can be added by any project member
-        match /timeLogs/{logId} {
-            allow read, write: if request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.members;
+        allow read, create, update, delete: if request.auth != null && get(/databases/$(database)/documents/projects/$(projectId)).data.members.hasAny([request.auth.uid]);
+        
+        // TimeLogs subcollection
+        match /timeLogs/{timeLogId} {
+            allow read, create, update, delete: if request.auth != null && get(/databases/$(database)/documents/projects/$(projectId)).data.members.hasAny([request.auth.uid]);
         }
       }
     }
-
-    // =================================================================
-    // Templates
-    // =================================================================
-    match /companies/{companyId}/templates/{templateId} {
-        allow read: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId;
-        // Writing/creating templates is an admin/template-manager role
-        allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId && isAdmin();
-    }
     
-    // =================================================================
-    // Integrations
-    // =================================================================
-     match /companies/{companyId}/integrations/{integrationId} {
-        allow read, write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId && isAdmin();
-     }
-     
-     match /companies/{companyId}/integrations/{integrationId}/deliveryLogs/{logId} {
-        allow read: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId && isAdmin();
-        allow write: if false; // Only backend can write
-     }
-
-    // =================================================================
-    // Invitations
-    // =================================================================
-    match /invitations/{invitationId} {
-      // Only the inviter or an admin can create an invitation.
-      allow create: if isSignedIn();
-      // Only the invited user (after signup) or inviter/admin can read/delete.
-      // This is handled by backend logic (processUserInvitations function).
-      allow read, delete: if isSignedIn();
+    // Companies collection:
+    // - Access is controlled by roles defined within the company document or a related roles collection (not fully defined here).
+    // - For now, allow reads/writes if the user is linked to the company.
+    match /companies/{companyId} {
+        allow read: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId;
+        allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId && request.auth.token.admin == true; // Example: only admins can write
+        
+        // Audit logs subcollection:
+        // - This collection is immutable from the client side. Only backend functions can write to it.
+        match /auditLogs/{logId} {
+            allow read: if request.auth != null && request.auth.token.admin == true; // Only admins can read audit logs
+            allow write: if false; // Deny all client-side writes
+        }
+        
+        // Integrations subcollection
+        match /integrations/{integrationId} {
+             allow read, write: if request.auth != null && request.auth.token.admin == true;
+             
+             // Delivery logs for webhooks
+             match /deliveryLogs/{logId} {
+                 allow read: if request.auth != null && request.auth.token.admin == true;
+                 allow write: if false; // Only functions can write
+             }
+        }
+        
+        // Templates subcollection
+        match /templates/{templateId} {
+            allow read, write: if request.auth != null && request.auth.token.admin == true;
+        }
+        
+        // Billing subcollection
+        match /billing/{docId} {
+             allow read: if request.auth != null && request.auth.token.admin == true;
+             allow write: if false; // Written by webhooks
+        }
+        
+        // Metrics subcollection
+        match /metrics/{metricId} {
+             allow read: if request.auth != null && request.auth.token.admin == true;
+             allow write: if false; // Written by scheduled function
+        }
     }
   }
 }
